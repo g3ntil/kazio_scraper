@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-09-29T10:08:10.742Z",
+  "summary": {
+    "jobinrwanda": {
+      "total": 82,
+      "ready": 82,
+      "held": 0,
+      "reasons": {},
+      "deadlineUnknown": 0
+    },
+    "brightermonday": {
+      "total": 80,
+      "ready": 52,
+      "held": 28,
+      "reasons": {
+        "non-job content: classified tender": 27,
+        "non-job content: tender/procurement title": 1
+      },
+      "deadlineUnknown": 47
+    },
+    "ndangira": {
+      "total": 133,
+      "ready": 109,
+      "held": 24,
+      "reasons": {
+        "expired": 24,
+        "non-job content: tender/procurement title": 1
+      },
+      "deadlineUnknown": 0
+    },
+    "greatrwandajobs": {
+      "total": 280,
+      "ready": 80,
+      "held": 200,
+      "reasons": {
+        "expired": 186,
+        "non-job content: tender/procurement title": 39
+      },
+      "deadlineUnknown": 0
+    },
+    "jobwebrwanda": {
+      "total": 300,
+      "ready": 0,
+      "held": 300,
+      "reasons": {
+        "expired": 291,
+        "AI source disabled; staging lacks extraction tracking": 300
+      },
+      "deadlineUnknown": 0
+    }
+  }
+}

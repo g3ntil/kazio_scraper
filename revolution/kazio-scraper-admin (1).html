@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kazio · Scraper &amp; extraction admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg: #FCFCFB;
+    --sidebar-bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F5F5F6;
+    --surface-3: #ECECEE;
+    --border: #EBEBED;
+    --border-strong: #DADADD;
+    --text: #0B0B0C;
+    --text-secondary: #63636A;
+    --text-tertiary: #A3A3AA;
+    --accent: #2954E0;
+    --accent-hover: #2246C6;
+    --accent-soft: #EEF2FD;
+    --new: #7C3FD0;
+    --new-soft: #F5F0FC;
+    --green: #16813D;
+    --green-soft: #E9F6EE;
+    --amber: #A5690C;
+    --amber-soft: #FDF3E1;
+    --red: #C22A1F;
+    --red-soft: #FCEDEB;
+    --shadow-sm: 0 1px 2px rgba(15,15,20,0.03);
+    --shadow-md: 0 2px 4px rgba(15,15,20,0.03), 0 12px 28px -10px rgba(15,15,20,0.10);
+    --radius: 16px;
+    --radius-sm: 11px;
+    --mono: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#18181A; --sidebar-bg:#19191B; --surface:#212123; --surface-2:#28282A; --surface-3:#2F2F32;
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.15);
+      --text:#F4F4F5; --text-secondary:#AFAFB4; --text-tertiary:#7C7C82;
+      --accent:#5B84FF; --accent-hover:#6E92FF; --accent-soft:#1D2743;
+      --new:#B183F0; --new-soft:#261C3B; --green:#3FCB7A; --green-soft:#102C1E;
+      --amber:#E3A63D; --amber-soft:#352611; --red:#F0665A; --red-soft:#371714;
+      --shadow-md: 0 2px 4px rgba(0,0,0,0.25), 0 12px 32px -10px rgba(0,0,0,0.5);
+    }
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:14.5px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  button, input{ font-family:inherit; }
+  .mono{ font-family:var(--mono); font-variant-numeric: tabular-nums; }
+
+  .app{ display:flex; min-height:100vh; }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar{
+    width:252px; flex-shrink:0; background:var(--sidebar-bg); border-right:1px solid var(--border);
+    padding:22px 16px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  }
+  .brand{ display:flex; align-items:center; gap:11px; padding:4px 8px 26px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:9px; background:linear-gradient(155deg,#2954E0,#1B3AA8);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.14);
+  }
+  .brand-name{ font-weight:650; font-size:15px; letter-spacing:-0.01em; }
+  .brand-sub{ font-size:11.5px; color:var(--text-tertiary); margin-top:1px; }
+
+  .nav-section-label{ font-size:10.5px; font-weight:650; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.06em; padding:20px 12px 8px; }
+  .nav{ display:flex; flex-direction:column; gap:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:var(--radius-sm);
+    color:var(--text-secondary); cursor:pointer; font-size:13.5px; font-weight:500; user-select:none;
+    transition: background .12s ease, color .12s ease; position:relative;
+  }
+  .nav-item svg{ width:16px; height:16px; flex-shrink:0; opacity:.8; }
+  .nav-item:hover{ background:var(--surface-2); color:var(--text); }
+  .nav-item.active{ background:var(--surface); color:var(--text); box-shadow: var(--shadow-sm); border:1px solid var(--border); }
+  .nav-item.active svg{ color:var(--accent); opacity:1; }
+  .nav-badge{ margin-left:auto; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--red-soft); color:var(--red); }
+  .nav-count{ margin-left:auto; font-size:11px; color:var(--text-tertiary); font-family:var(--mono); }
+
+  .sidebar-footer{ margin-top:auto; padding-top:16px; border-top:1px solid var(--border); }
+  .env-row{ display:flex; align-items:center; justify-content:space-between; padding:9px 11px; font-size:11.5px; color:var(--text-tertiary); }
+  .env-row .mono{ color:var(--text-secondary); }
+  .health-pill{
+    display:flex; align-items:center; gap:9px; padding:10px 11px; border-radius:var(--radius-sm);
+    background:var(--surface); border:1px solid var(--border); font-size:12.5px; color:var(--text-secondary);
+  }
+  .dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot.ok{ background:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+  .dot.warn{ background:var(--amber); box-shadow:0 0 0 3px var(--amber-soft); }
+  .dot.bad{ background:var(--red); box-shadow:0 0 0 3px var(--red-soft); }
+  .dot.live{ background:var(--accent); animation: pulse 1.1s infinite; }
+
+  /* ============ SHELL / HEADER ============ */
+  .shell{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topheader{
+    height:64px; flex-shrink:0; border-bottom:1px solid var(--border); background:var(--surface);
+    display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:10;
+  }
+  .crumb{ font-size:13px; color:var(--text-tertiary); display:flex; align-items:center; gap:7px; }
+  .crumb b{ color:var(--text); font-weight:600; }
+  .search-box{
+    display:flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; width:300px; color:var(--text-tertiary);
+  }
+  .search-box input{ border:none; background:none; outline:none; font-size:13px; color:var(--text); width:100%; }
+  .search-box input::placeholder{ color:var(--text-tertiary); }
+  .kbd{ font-family:var(--mono); font-size:10px; background:var(--surface-3); border:1px solid var(--border-strong); border-radius:5px; padding:2px 6px; color:var(--text-tertiary); }
+  .header-right{ display:flex; align-items:center; gap:16px; }
+  .icon-btn{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); cursor:pointer; position:relative; border:1px solid transparent; }
+  .icon-btn:hover{ background:var(--surface-2); border-color:var(--border); }
+  .dot-badge{ position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; background:var(--red); border:1.5px solid var(--surface); }
+  .avatar{ width:30px; height:30px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
+
+  /* ============ MAIN ============ */
+  .main{ flex:1; padding:38px 44px 90px; max-width:1320px; width:100%; margin:0 auto; }
+  .page{ display:none; animation:fade .2s ease; }
+  .page.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:none;} }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  .topbar{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:32px; gap:18px; }
+  .page-title{ font-size:23px; font-weight:650; letter-spacing:-0.015em; margin:0 0 5px; }
+  .page-desc{ color:var(--text-secondary); font-size:13.5px; margin:0; }
+  .topbar-actions{ display:flex; align-items:center; gap:10px; }
+
+  .btn{ border:none; cursor:pointer; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:7px; transition: filter .12s ease, transform .08s ease, background .12s ease; }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--accent); color:#fff; box-shadow: var(--shadow-sm); }
+  .btn-primary:hover{ background:var(--accent-hover); }
+  .btn-primary:disabled{ background:var(--text-tertiary); cursor:default; }
+  .btn-ghost{ background:var(--surface); color:var(--text); border:1px solid var(--border-strong); }
+  .btn-ghost:hover{ background:var(--surface-2); }
+  .btn svg{ width:14px; height:14px; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+
+  /* ============ HOME: hero ============ */
+  .hero{ display:grid; grid-template-columns: 1.15fr 1fr; gap:18px; margin-bottom:18px; }
+  .hero-stat{ padding:26px 28px; }
+  .hero-stat .label{ font-size:12px; color:var(--text-secondary); margin-bottom:11px; font-weight:500; }
+  .hero-number-row{ display:flex; align-items:baseline; gap:9px; }
+  .hero-number{ font-size:40px; font-weight:680; letter-spacing:-0.02em; font-family:var(--mono); }
+  .hero-number-unit{ font-size:13px; color:var(--text-secondary); font-weight:500; }
+  .hero-split{ display:flex; gap:24px; margin-top:18px; padding-top:18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .split-item{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-secondary); }
+  .split-item b{ color:var(--text); font-weight:650; font-family:var(--mono); }
+
+  .gauge-card{ padding:26px 28px; display:flex; flex-direction:column; }
+  .gauge-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .gauge-top .label{ font-size:12px; color:var(--text-secondary); font-weight:500; }
+  .status-chip{ font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:6px; text-transform:uppercase; letter-spacing:.03em; }
+  .status-chip.idle{ background:var(--surface-3); color:var(--text-tertiary); }
+  .status-chip.running{ background:var(--accent-soft); color:var(--accent); }
+  .status-chip.done{ background:var(--green-soft); color:var(--green); }
+  .gauge-track{ height:8px; border-radius:6px; background:var(--surface-3); overflow:hidden; }
+  .gauge-fill{ height:100%; width:0%; background:var(--accent); border-radius:6px; transition:width .35s ease; }
+  .gauge-fill.complete{ background:var(--green); }
+  .gauge-meta{ display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--text-secondary); }
+  .gauge-pct{ font-weight:700; color:var(--text); font-size:15px; font-family:var(--mono); }
+  .gauge-note{ margin-top:14px; font-size:12px; color:var(--text-tertiary); min-height:16px; font-family:var(--mono); }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
+  .stat-card{ padding:18px 20px; }
+  .stat-card .label{ font-size:11.5px; color:var(--text-secondary); margin-bottom:9px; font-weight:500; }
+  .stat-card .value{ font-size:23px; font-weight:680; font-family:var(--mono); letter-spacing:-0.01em; }
+  .stat-card .value.green{ color:var(--green); } .stat-card .value.amber{ color:var(--amber); } .stat-card .value.red{ color:var(--red); }
+
+  .section-label{ font-size:12.5px; font-weight:650; margin:30px 0 13px; color:var(--text); display:flex; align-items:center; justify-content:space-between; }
+  .section-label span.sub{ font-weight:500; color:var(--text-tertiary); font-size:12px; }
+
+  .source-strip{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px; }
+  .source-pill{ padding:16px 17px; display:flex; flex-direction:column; gap:9px; cursor:pointer; transition: border-color .12s ease; }
+  .source-pill:hover{ border-color:var(--border-strong); }
+  .source-pill-top{ display:flex; align-items:center; justify-content:space-between; gap:7px; }
+  .source-name{ font-size:12.5px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .source-count{ font-size:11px; color:var(--text-secondary); font-family:var(--mono); }
+  .mini-track{ height:4px; border-radius:5px; background:var(--surface-3); overflow:hidden; }
+  .mini-fill{ height:100%; width:0%; background:var(--text-tertiary); border-radius:5px; transition:width .3s ease, background .2s ease; }
+  .mini-fill.active{ background:var(--accent); } .mini-fill.done{ background:var(--green); }
+
+  .home-grid{ display:grid; grid-template-columns: 1.4fr 1fr; gap:18px; align-items:start; }
+
+  .term-card{ background:#141416; border:1px solid #2A2A2E; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-md); }
+  .term-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #2A2A2E; }
+  .term-dots{ display:flex; gap:6px; }
+  .term-dots span{ width:9px; height:9px; border-radius:50%; }
+  .term-dots span:nth-child(1){ background:#F0564A; } .term-dots span:nth-child(2){ background:#E3A63D; } .term-dots span:nth-child(3){ background:#3FCB7A; }
+  .term-title{ font-size:11.5px; color:#8A8A90; font-family:var(--mono); }
+  .term-body{ height:300px; overflow-y:auto; padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.85; }
+  .term-line{ display:flex; gap:10px; color:#B8B8BE; }
+  .term-time{ color:#5C5C62; flex-shrink:0; }
+  .term-line .t-ok{ color:#3FCB7A; } .term-line .t-warn{ color:#E3A63D; } .term-line .t-err{ color:#F0665A; } .term-line .t-info{ color:#6E92FF; }
+
+  .trend-card{ padding:22px 24px 18px; margin-bottom:18px; }
+  .trend-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px; }
+  .trend-title{ font-size:13px; font-weight:650; }
+  .trend-sub{ font-size:11.5px; color:var(--text-tertiary); }
+
+  /* ============ SCRAPER PAGE ============ */
+  .tabs{ display:flex; gap:3px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+  .tab{ padding:12px 4px; margin-right:26px; font-size:13px; font-weight:500; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  .tab:hover{ color:var(--text); }
+  .tab.active{ color:var(--text); border-bottom-color:var(--accent); font-weight:650; }
+  .tab-live-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.1s infinite; display:none; }
+
+  .source-panel{ display:none; } .source-panel.active{ display:block; animation:fade .18s ease; }
+  .source-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+  .source-header-left{ display:flex; align-items:center; gap:13px; }
+  .source-favicon{ width:38px; height:38px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--text-secondary); }
+  .source-header h2{ font-size:17px; font-weight:650; margin:0; }
+  .source-url{ font-size:12px; color:var(--text-tertiary); font-family:var(--mono); }
+  .track-badge{ font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:6px; background:var(--amber-soft); color:var(--amber); text-transform:uppercase; letter-spacing:.03em; }
+
+  .source-progress-card{ padding:20px 22px; margin-bottom:20px; }
+  .source-metrics{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:14px; margin-bottom:20px; }
+  .metric{ padding:17px 18px; }
+  .metric .label{ font-size:11px; color:var(--text-secondary); margin-bottom:8px; font-weight:500; }
+  .metric .value{ font-size:19px; font-weight:680; font-family:var(--mono); }
+  .metric .sub{ font-size:10.5px; color:var(--text-tertiary); margin-top:4px; }
+  .metric .value.red{ color:var(--red); } .metric .value.amber{ color:var(--amber); } .metric .value.green{ color:var(--green); }
+
+  .table-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; flex-wrap:wrap; }
+  .table-search{ display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:9px; padding:8px 12px; width:260px; }
+  .table-search input{ border:none; outline:none; background:none; font-size:12.5px; color:var(--text); width:100%; }
+  .filter-chips{ display:flex; gap:7px; }
+  .filter-chip{ font-size:11.5px; font-weight:600; padding:5px 11px; border-radius:7px; border:1px solid var(--border-strong); color:var(--text-secondary); cursor:pointer; background:var(--surface); }
+  .filter-chip.active{ background:var(--text); color:var(--bg); border-color:var(--text); }
+
+  table.job-table{ width:100%; border-collapse:collapse; }
+  .job-table thead th{
+    text-align:left; font-size:10.5px; font-weight:650; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.05em;
+    padding:12px 16px; border-bottom:1px solid var(--border); background:var(--surface-2); cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  .job-table thead th:hover{ color:var(--text-secondary); }
+  .job-table thead th .arrow{ margin-left:5px; opacity:.5; font-size:9px; }
+  .job-table thead th:first-child{ border-top-left-radius:var(--radius); }
+  .job-table thead th:last-child{ border-top-right-radius:var(--radius); }
+  .job-table tbody tr{ border-bottom:1px solid var(--border); transition: background .5s ease; }
+  .job-table tbody tr:last-child{ border-bottom:none; }
+  .job-table tbody tr:hover{ background:var(--surface-2); }
+  .job-table tbody tr.row-new{ background: var(--new-soft); }
+  .job-table td{ padding:13px 16px; vertical-align:middle; }
+  .job-title{ font-weight:600; color:var(--text); }
+  .job-meta{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+  .job-company{ color:var(--text-secondary); }
+  .status-tag{ font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; letter-spacing:.02em; }
+  .status-tag.new{ background:var(--new-soft); color:var(--new); }
+  .status-tag.staged{ background:var(--amber-soft); color:var(--amber); }
+  .status-tag.extracted{ background:var(--green-soft); color:var(--green); }
+  .status-tag.failed{ background:var(--red-soft); color:var(--red); }
+  .status-tag.existing{ background:var(--surface-3); color:var(--text-secondary); }
+  .fail-reason-cell{ font-size:12px; color:var(--text-tertiary); }
+  .table-card{ overflow:hidden; padding:0; }
+  .table-footer{ display:flex; align-items:center; justify-content:space-between; padding:13px 16px; font-size:12px; color:var(--text-tertiary); border-top:1px solid var(--border); }
+  .page-btns{ display:flex; gap:5px; }
+  .page-btn{ width:26px; height:26px; border-radius:7px; border:1px solid var(--border-strong); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-secondary); }
+  .page-btn:hover{ background:var(--surface-2); }
+  .page-btn.current{ background:var(--text); color:var(--bg); border-color:var(--text); }
+
+  /* ============ STATS PAGE ============ */
+  .two-col{ display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start; }
+  .reason-card{ padding:22px 24px; }
+  .reason-row{ margin-bottom:16px; } .reason-row:last-child{ margin-bottom:0; }
+  .reason-top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:7px; }
+  .reason-top .count{ color:var(--text-secondary); font-weight:650; font-family:var(--mono); }
+  .reason-track{ height:7px; border-radius:6px; background:var(--surface-3); overflow:hidden; }
+  .reason-fill{ height:100%; background:var(--red); border-radius:6px; opacity:.82; }
+
+  .health-table{ width:100%; border-collapse:collapse; }
+  .health-table th{ text-align:left; font-size:10.5px; font-weight:650; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.04em; padding:13px 18px; border-bottom:1px solid var(--border); background:var(--surface-2); }
+  .health-table td{ padding:13px 18px; border-bottom:1px solid var(--border); font-size:13px; }
+  .health-table tr:last-child td{ border-bottom:none; }
+  .health-name{ font-weight:600; display:flex; align-items:center; gap:9px; }
+  .health-status{ font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:6px; text-transform:uppercase; letter-spacing:.02em; }
+  .health-status.ok{ background:var(--green-soft); color:var(--green); }
+  .health-status.warn{ background:var(--amber-soft); color:var(--amber); }
+
+  .chart-card{ padding:22px 24px 10px; }
+  svg.barchart text{ font-family:var(--sans); }
+
+  /* ============ MODAL / TOAST ============ */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(10,10,12,0.38); display:none; align-items:center; justify-content:center; z-index:50; }
+  .modal-overlay.open{ display:flex; animation:fade .12s ease; }
+  .modal{ background:var(--surface); border-radius:20px; padding:28px; width:400px; box-shadow:0 28px 70px rgba(0,0,0,0.26); border:1px solid var(--border); }
+  .modal h3{ margin:0 0 5px; font-size:16px; font-weight:650; }
+  .modal p{ margin:0 0 18px; font-size:12.5px; color:var(--text-secondary); }
+  .field-label{ font-size:12.5px; font-weight:600; margin-bottom:7px; display:block; }
+  .field-input{ width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--border-strong); background:var(--surface-2); color:var(--text); font-size:13.5px; margin-bottom:18px; font-family:var(--mono); }
+  .field-input:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:transparent; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:9px; }
+
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--text); color:var(--bg); padding:12px 18px; border-radius:11px; font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:all .2s ease; z-index:60; box-shadow:0 14px 34px rgba(0,0,0,0.22); }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ============ EXTRAS ============ */
+  .tag{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.02em; text-transform:uppercase; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; background:var(--surface-3); color:var(--text-secondary); }
+  .tag.blue{ background:var(--accent-soft); color:var(--accent); } .tag.green{ background:var(--green-soft); color:var(--green); }
+  .tag.amber{ background:var(--amber-soft); color:var(--amber); } .tag.red{ background:var(--red-soft); color:var(--red); }
+  .tag.purple{ background:var(--new-soft); color:var(--new); } .tag.gray{ background:var(--surface-3); color:var(--text-secondary); }
+  .chip-row{ display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+
+  .banner{ display:flex; gap:12px; align-items:flex-start; padding:14px 18px; border-radius:var(--radius-sm); font-size:12.5px; margin-bottom:18px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-secondary); line-height:1.55; }
+  .banner.warn{ background:var(--amber-soft); border-color:transparent; color:var(--amber); }
+  .banner.info{ background:var(--accent-soft); border-color:transparent; color:var(--accent); }
+  .banner.crit{ background:var(--red-soft); border-color:transparent; color:var(--red); }
+  .banner b{ font-weight:650; }
+  .banner a{ color:inherit; text-decoration:underline; cursor:pointer; }
+
+  .attn-card{ padding:0; margin-bottom:18px; overflow:hidden; }
+  .attn-head{ display:flex; justify-content:space-between; align-items:center; padding:15px 18px; border-bottom:1px solid var(--border); }
+  .attn-head .t{ font-size:13px; font-weight:650; display:flex; align-items:center; gap:9px; }
+  .attn-item{ display:flex; gap:13px; padding:14px 18px; border-bottom:1px solid var(--border); align-items:flex-start; }
+  .attn-item:last-child{ border-bottom:none; }
+  .attn-item .body{ flex:1; min-width:0; }
+  .attn-item .t{ font-weight:600; font-size:13px; }
+  .attn-item .d{ color:var(--text-secondary); font-size:12.5px; margin-top:3px; line-height:1.55; }
+  .sev{ width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+  .sev.crit{ background:var(--red); box-shadow:0 0 0 3px var(--red-soft); } .sev.warn{ background:var(--amber); box-shadow:0 0 0 3px var(--amber-soft); } .sev.info{ background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+
+  .btn-sm{ padding:6px 12px; font-size:12px; border-radius:8px; }
+  .btn-danger{ background:var(--red-soft); color:var(--red); }
+  .btn-danger:hover{ filter:brightness(.96); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-row{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:start; }
+  .panel{ padding:20px 24px; }
+  .panel h3{ margin:0 0 4px; font-size:13.5px; font-weight:650; }
+  .panel .hint{ font-size:12px; color:var(--text-tertiary); margin:0 0 15px; line-height:1.55; }
+  .panel + .panel{ margin-top:18px; }
+  .kv{ display:grid; grid-template-columns:150px 1fr; gap:9px 14px; font-size:13px; margin:0; }
+  .kv dt{ color:var(--text-tertiary); } .kv dd{ margin:0; word-break:break-word; }
+  .sel{ padding:7px 11px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit; }
+  .num-input{ width:68px; padding:7px 9px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-family:var(--mono); }
+
+  .seg{ display:inline-flex; border:1px solid var(--border-strong); border-radius:8px; overflow:hidden; }
+  .seg button{ border:none; background:var(--surface); padding:6px 13px; font-size:12px; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+  .seg button + button{ border-left:1px solid var(--border-strong); }
+  .seg button.active{ background:var(--text); color:var(--bg); }
+
+  .bar{ height:7px; border-radius:6px; background:var(--surface-3); overflow:hidden; }
+  .bar > i{ display:block; height:100%; background:var(--accent); border-radius:6px; }
+  .bar.green > i{ background:var(--green); } .bar.amber > i{ background:var(--amber); } .bar.red > i{ background:var(--red); } .bar.gray > i{ background:var(--text-tertiary); }
+  .bar-row{ margin-bottom:15px; } .bar-row:last-child{ margin-bottom:0; }
+  .bar-top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; gap:12px; }
+  .bar-top .n{ font-family:var(--mono); color:var(--text-secondary); font-weight:650; white-space:nowrap; }
+  .bar-top .l{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  table.tbl{ width:100%; border-collapse:collapse; }
+  .tbl th{ text-align:left; font-size:10.5px; font-weight:650; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.05em; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--surface-2); white-space:nowrap; }
+  .tbl td{ padding:13px 16px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+  .tbl tr:last-child td{ border-bottom:none; }
+  .tbl tbody tr.clickable{ cursor:pointer; } .tbl tbody tr.clickable:hover{ background:var(--surface-2); }
+  .tbl .num{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; }
+  .scroll-x{ overflow-x:auto; }
+  .muted{ color:var(--text-tertiary); } .sec{ color:var(--text-secondary); }
+  .trunc{ max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .empty{ text-align:center; padding:36px; color:var(--text-tertiary); font-size:13px; }
+
+  .status-tag.done{ background:var(--green-soft); color:var(--green); }
+  .status-tag.pending{ background:var(--amber-soft); color:var(--amber); }
+  .status-tag.processing{ background:var(--accent-soft); color:var(--accent); }
+  .status-tag.skipped{ background:var(--surface-3); color:var(--text-secondary); }
+  .status-tag.unprocessed{ background:var(--red-soft); color:var(--red); }
+
+  .funnel{ display:flex; align-items:stretch; gap:8px; flex-wrap:wrap; }
+  .fstep{ flex:1; min-width:120px; padding:13px 15px; border:1px solid var(--border); border-radius:11px; background:var(--surface-2); }
+  .fstep .n{ font-family:var(--mono); font-size:18px; font-weight:680; }
+  .fstep .l{ font-size:11px; color:var(--text-secondary); margin-top:3px; }
+
+  .pager{ display:flex; align-items:center; gap:9px; }
+  .pager button{ border:1px solid var(--border-strong); background:var(--surface); border-radius:7px; padding:4px 11px; cursor:pointer; color:var(--text-secondary); font-size:12px; }
+  .pager button:disabled{ opacity:.4; cursor:default; }
+
+  .drawer-overlay{ position:fixed; inset:0; background:rgba(10,10,12,.32); display:none; z-index:40; }
+  .drawer-overlay.open{ display:block; }
+  .drawer{ position:fixed; top:0; right:0; height:100vh; width:min(560px,100vw); background:var(--surface); border-left:1px solid var(--border); box-shadow:var(--shadow-md); transform:translateX(100%); transition:transform .18s ease; z-index:45; display:flex; flex-direction:column; }
+  .drawer.open{ transform:none; }
+  .drawer-head{ padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
+  .drawer-head h3{ margin:0 0 5px; font-size:16px; font-weight:650; line-height:1.4; }
+  .drawer-body{ padding:20px 24px; overflow:auto; flex:1; }
+  .drawer-foot{ padding:15px 24px; border-top:1px solid var(--border); display:flex; gap:9px; flex-wrap:wrap; }
+  .drawer h4{ margin:22px 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-tertiary); font-weight:650; }
+  .mono-block{ font-family:var(--mono); font-size:11.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; white-space:pre-wrap; word-break:break-word; max-height:220px; overflow:auto; line-height:1.6; }
+  .pillset{ display:flex; gap:6px; flex-wrap:wrap; }
+  .modal.wide{ width:580px; max-width:94vw; max-height:90vh; overflow:auto; }
+  .modal h4{ margin:18px 0 9px; font-size:12.5px; font-weight:650; }
+  .field-input.plain{ font-family:var(--sans); }
+  .hook-row{ display:grid; grid-template-columns:130px 1fr; gap:9px; align-items:center; margin-bottom:9px; font-size:12.5px; }
+  .hook-row .field-input{ margin:0; padding:8px 10px; font-size:12.5px; }
+  .sourcebox{ padding:17px 19px; margin-bottom:20px; }
+  .sourcebox ul{ margin:8px 0 0; padding-left:19px; color:var(--text-secondary); font-size:12.5px; line-height:1.7; }
+  .sourcebox li b{ color:var(--text); font-weight:600; }
+  code{ font-family:var(--mono); font-size:12px; background:var(--surface-3); padding:2px 6px; border-radius:5px; }
+  .cron-sched{ font-family:var(--mono); font-size:12px; color:var(--text-secondary); }
+  .toggle{ width:36px; height:20px; border-radius:12px; background:var(--surface-3); border:1px solid var(--border-strong); position:relative; cursor:pointer; flex-shrink:0; display:inline-block; }
+  .toggle::after{ content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--text-tertiary); transition:all .15s ease; }
+  .toggle.on{ background:var(--green-soft); border-color:var(--green); } .toggle.on::after{ left:18px; background:var(--green); }
+  .toggle.off-locked{ opacity:.55; cursor:not-allowed; }
+  .spinner{ width:13px; height:13px; border-radius:50%; border:2px solid var(--border-strong); border-top-color:var(--accent); animation:spin .7s linear infinite; display:inline-block; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .gauge-fill.indeterminate{ width:35% !important; animation:slide 1.1s ease-in-out infinite; }
+  @keyframes slide{ 0%{ margin-left:-35%; } 100%{ margin-left:100%; } }
+  .gauge-track{ overflow:hidden; }
+
+  /* ================= ADDITIONS (Kazio admin) ================= */
+  .sidebar{ overflow-y:auto; }
+  .nav-badge.amber{ background:var(--amber-soft); color:var(--amber); }
+  .nav-badge.blue{ background:var(--accent-soft); color:var(--accent); }
+  .conn{ display:flex; align-items:center; gap:9px; padding:10px 11px; border-radius:var(--radius-sm); border:1px dashed var(--border-strong); font-size:12px; color:var(--text-secondary); cursor:pointer; margin-bottom:10px; }
+  .conn:hover{ background:var(--surface-2); }
+  .conn b{ color:var(--text); font-weight:650; }
+  .conn.live{ border-style:solid; border-color:var(--green); }
+  .stat-row{ grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); }
+  .stat-card .sub{ font-size:11.5px; color:var(--text-tertiary); margin-top:5px; line-height:1.4; }
+  .source-metrics{ grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); }
+  .source-strip{ grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+  .source-pill .path{ font-size:11px; color:var(--text-tertiary); line-height:1.35; min-height:29px; }
+  .hero-number-unit b{ color:var(--text); font-family:var(--mono); }
+
+  @media (max-width:920px){
+    .sidebar{ width:72px; padding:18px 8px; }
+    .brand-name,.brand-sub,.nav-item span,.nav-count,.nav-badge,.health-pill span,.env-row{ display:none; }
+    .nav-item{ justify-content:center; }
+    .search-box{ width:170px; }
+    .hero,.home-grid,.two-col,.grid2,.grid3{ grid-template-columns:1fr; }
+    .stat-row,.source-strip{ grid-template-columns:repeat(2,1fr); }
+    .source-metrics{ grid-template-columns:repeat(2,1fr); }
+    .main{ padding:22px; }
+    .conn span{ display:none; }
+  }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:5px; }
+  .term-body::-webkit-scrollbar-thumb{ background:#3A3A3E; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div><div class="brand-name">Kazio</div><div class="brand-sub">Scraper &amp; extraction admin</div></div>
+    </div>
+
+    <div class="nav-section-label">Monitor</div>
+    <div class="nav">
+      <div class="nav-item active" data-page="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+        <span>Overview</span>
+      </div>
+      <div class="nav-item" data-page="sources">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9h17"/><path d="M8 4v5"/></svg>
+        <span>Sources</span><span class="nav-count" id="navSources">5</span>
+      </div>
+      <div class="nav-item" data-page="jobs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        <span>Jobs explorer</span><span class="nav-count" id="navJobs"></span>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Pipeline</div>
+    <div class="nav">
+      <div class="nav-item" data-page="queue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+        <span>Extraction queue</span><span class="nav-badge" id="navQueue" style="display:none"></span>
+      </div>
+      <div class="nav-item" data-page="keys">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M16 7l3 3"/></svg>
+        <span>AI keys</span><span class="nav-badge amber" id="navKeys" style="display:none"></span>
+      </div>
+      <div class="nav-item" data-page="automation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Automation</span>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Insight</div>
+    <div class="nav">
+      <div class="nav-item" data-page="quality">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>Data quality</span>
+      </div>
+      <div class="nav-item" data-page="alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span>Alerts</span><span class="nav-badge" id="navAlerts" style="display:none"></span>
+      </div>
+      <div class="nav-item" data-page="stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10"/><path d="M11 20V4"/><path d="M18 20v-7"/></svg>
+        <span>Stats &amp; health</span><span class="nav-badge amber" id="navStats" style="display:none"></span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="conn" id="connPill" title="Connection settings"><div class="dot warn" id="connDot"></div><span id="connText"><b>Snapshot</b> · click to connect</span></div>
+      <div class="env-row"><span>Project</span><span class="mono">ndjvazy…pbs</span></div>
+      <div class="health-pill"><div class="dot ok" id="sidebarHealthDot"></div><span id="sidebarHealthText">All sources healthy</span></div>
+    </div>
+  </div>
+
+  <!-- ============ SHELL ============ -->
+  <div class="shell">
+    <div class="topheader">
+      <div class="crumb"><b id="crumbPage">Overview</b><span id="crumbSub" style="display:none"></span></div>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search jobs by title or company…" id="globalSearch">
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="header-right">
+        <div class="icon-btn" id="bellBtn" title="Alerts">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="dot-badge" id="bellDot" style="display:none"></span>
+        </div>
+        <div class="icon-btn" id="openSettings" title="Settings">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div class="avatar">G</div>
+      </div>
+    </div>
+
+    <div class="main">
+
+      <!-- ============ OVERVIEW ============ -->
+      <div class="page active" id="page-overview">
+        <div class="topbar">
+          <div><h1 class="page-title">Overview</h1><p class="page-desc" id="ovDesc"></p></div>
+          <div class="topbar-actions">
+            <button class="btn btn-ghost" id="refreshBtn">Refresh</button>
+            <button class="btn btn-ghost" id="extractAllBtn">Run extraction</button>
+            <button class="btn btn-primary" id="scrapeAllBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+              Scrape all
+            </button>
+          </div>
+        </div>
+        <div id="modeBanner"></div>
+        <div class="card attn-card" id="attnCard"></div>
+
+        <div class="hero">
+          <div class="card hero-stat" id="heroJobs"></div>
+          <div class="card gauge-card">
+            <div class="gauge-top"><span class="label">Run monitor</span><span class="status-chip idle" id="gaugeStatus">Idle</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div>
+            <div class="gauge-meta"><span id="gaugeNote">No operation running</span><span class="gauge-pct" id="gaugePct"></span></div>
+            <div class="gauge-note" id="gaugeSubNote">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="stat-row" id="ovStats"></div>
+
+        <div class="section-label">Sources <span class="sub">ingestion path · rows in staging → jobs table</span></div>
+        <div class="source-strip" id="sourceStrip"></div>
+
+        <div class="home-grid">
+          <div class="term-card">
+            <div class="term-head">
+              <div class="term-dots"><span></span><span></span><span></span></div>
+              <div class="term-title">activity.log</div>
+              <div></div>
+            </div>
+            <div class="term-body" id="termBody"></div>
+          </div>
+          <div>
+            <div class="card trend-card">
+              <div class="trend-head"><span class="trend-title">Rows added to jobs, last 7 days</span><span class="trend-sub">by scraped_at</span></div>
+              <div id="chartHost1"></div>
+            </div>
+            <div class="card panel" id="capacityMini"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SOURCES ============ -->
+      <div class="page" id="page-sources">
+        <div class="topbar">
+          <div><h1 class="page-title">Sources</h1><p class="page-desc">One tab per source: how it reaches the database, what is stuck, and the rows themselves. Click any row to inspect it.</p></div>
+          <div class="topbar-actions">
+            <button class="btn btn-primary" id="scrapeAllBtn2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+              Scrape all
+            </button>
+          </div>
+        </div>
+        <div class="tabs" id="sourceTabs"></div>
+        <div id="sourcePanels"></div>
+      </div>
+
+      <!-- ============ JOBS EXPLORER ============ -->
+      <div class="page" id="page-jobs">
+        <div class="topbar">
+          <div><h1 class="page-title">Jobs explorer</h1><p class="page-desc">Every row in <code>public.jobs</code> across all sources. Filter by what's wrong with it, then requeue or deactivate from the row drawer.</p></div>
+        </div>
+        <div id="jobsBanner"></div>
+        <div class="table-toolbar">
+          <div class="btn-row">
+            <div class="table-search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input type="text" id="jobsSearch" placeholder="Title or company…">
+            </div>
+            <select class="sel" id="jobsSource"><option value="all">All sources</option></select>
+            <select class="sel" id="jobsStatus">
+              <option value="all">Any status</option><option value="done">Done</option><option value="failed">Failed</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="skipped">Skipped</option>
+            </select>
+            <select class="sel" id="jobsFlag">
+              <option value="">No quick filter</option>
+              <option value="active">Active (live on Kazio)</option>
+              <option value="unenriched">Active but not enriched</option>
+              <option value="atcap">Failed at retry cap</option>
+              <option value="nodeadline">Active, no deadline</option>
+              <option value="expired">Past deadline</option>
+              <option value="dup">Flagged duplicate</option>
+            </select>
+          </div>
+          <div class="muted" id="jobsCount" style="font-size:11.5px"></div>
+        </div>
+        <div class="card table-card" id="jobsTableHost"></div>
+      </div>
+
+      <!-- ============ EXTRACTION QUEUE ============ -->
+      <div class="page" id="page-queue">
+        <div class="topbar">
+          <div><h1 class="page-title">Extraction queue</h1><p class="page-desc">What is waiting for the AI, what failed and why, and the controls to push it through.</p></div>
+          <div class="topbar-actions"><button class="btn btn-ghost" id="refreshBtn2">Refresh</button></div>
+        </div>
+        <div class="stat-row" id="queueCards"></div>
+        <div class="grid2">
+          <div>
+            <div class="section-label" style="margin-top:0">Queue by table <span class="sub">and what drains it</span></div>
+            <div class="card table-card"><div class="scroll-x" id="queueTable"></div></div>
+            <div class="section-label">Why extractions fail <span class="sub">failed rows, all tables</span></div>
+            <div class="card reason-card" id="queueReasons"></div>
+          </div>
+          <div>
+            <div class="section-label" style="margin-top:0">Controls</div>
+            <div class="card panel" id="queueActions"></div>
+            <div class="section-label">Throughput</div>
+            <div class="card panel" id="queueCapacity"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ AI KEYS ============ -->
+      <div class="page" id="page-keys">
+        <div class="topbar">
+          <div><h1 class="page-title">AI keys &amp; capacity</h1><p class="page-desc">The Gemini / OpenRouter pool from <code>gemini_keys</code>. Key values are never read into this page.</p></div>
+          <div class="topbar-actions"><button class="btn btn-ghost" id="refreshBtn3">Refresh</button></div>
+        </div>
+        <div id="keysBanner"></div>
+        <div class="stat-row" id="keysStats"></div>
+        <div class="card table-card"><div class="scroll-x" id="keysTable"></div></div>
+        <div class="grid2" style="margin-top:14px">
+          <div class="card panel">
+            <h3>How rotation works today</h3>
+            <p class="hint">Read from the deployed <code>process-job</code> and <code>ai-job-extractor</code> code.</p>
+            <ul class="sec" style="margin:0; padding-left:18px; font-size:12.5px; line-height:1.7">
+              <li>Only keys with <code>active=true</code> and <code>status='active'</code> are considered; Gemini keys are preferred over OpenRouter.</li>
+              <li>Among usable keys it picks the least-recently-used one.</li>
+              <li>A 429 blocks that key for <b>20 seconds</b> (<code>rpm_blocked_until</code>), then the call retries on another key after a <b>22 s</b> sleep, up to 4 tries.</li>
+              <li>A 401/403 disables the key permanently (<code>active=false</code>).</li>
+              <li><code>requests_today</code> counts <em>successes</em> only and resets by UTC date. <code>requests_this_minute</code> is never written by either function, so per-minute limits are not tracked.</li>
+              <li>When no key is usable, <code>process-job</code> writes a <code>critical</code> row to <code>ops_alert_events</code>.</li>
+            </ul>
+          </div>
+          <div class="card panel">
+            <h3>Add a key</h3>
+            <p class="hint">Written once to <code>gemini_keys</code> and never displayed again. Needs a live connection.</p>
+            <div class="hook-row"><span>Provider</span><select class="sel" id="newKeyProvider"><option value="gemini">gemini</option><option value="openrouter">openrouter</option></select></div>
+            <div class="hook-row"><span>Key</span><input class="field-input plain" type="password" id="newKeyValue" placeholder="AIza… / sk-or-…" autocomplete="off"></div>
+            <div class="hook-row"><span>RPM / RPD limit</span><div class="btn-row"><input class="num-input" id="newKeyRpm" value="15"><input class="num-input" id="newKeyRpd" value="200" style="width:80px"></div></div>
+            <button class="btn btn-primary btn-sm" id="addKeyBtn">Add key</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ AUTOMATION ============ -->
+      <div class="page" id="page-automation">
+        <div class="topbar">
+          <div><h1 class="page-title">Automation</h1><p class="page-desc">The cron schedule, the database functions behind it, the edge functions that call the AI, and the triggers on <code>jobs</code>.</p></div>
+          <div class="topbar-actions"><button class="btn btn-ghost" id="refreshBtn4">Refresh</button></div>
+        </div>
+        <div id="autoBanner"></div>
+        <div class="section-label" style="margin-top:0">Scheduled jobs <span class="sub">pg_cron</span></div>
+        <div class="card table-card"><div class="scroll-x" id="cronTable"></div></div>
+        <div class="grid2">
+          <div>
+            <div class="section-label">Run a maintenance function now</div>
+            <div class="card panel" id="fnRunner"></div>
+            <div class="section-label">Triggers on the jobs pipeline</div>
+            <div class="card table-card"><div class="scroll-x" id="trigTable"></div></div>
+          </div>
+          <div>
+            <div class="section-label">Edge functions <span class="sub">18 deployed</span></div>
+            <div class="card table-card"><div class="scroll-x" id="edgeTable"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ DATA QUALITY ============ -->
+      <div class="page" id="page-quality">
+        <div class="topbar">
+          <div><h1 class="page-title">Data quality</h1><p class="page-desc">How complete the live jobs are, where the gaps come from, and problems that slip past the automated gates.</p></div>
+        </div>
+        <div id="qualBanner"></div>
+        <div class="grid2">
+          <div class="card panel" id="qualFill"></div>
+          <div>
+            <div class="card panel" id="qualFindings"></div>
+            <div class="card panel" id="qualDeadline"></div>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:14px">
+          <div class="card panel" id="qualIndustry"></div>
+          <div class="card panel" id="qualFunction"></div>
+        </div>
+        <div class="grid2" style="margin-top:14px">
+          <div class="card panel" id="vocabPanel"></div>
+          <div class="card panel" id="downstreamPanel"></div>
+        </div>
+      </div>
+
+      <!-- ============ ALERTS ============ -->
+      <div class="page" id="page-alerts">
+        <div class="topbar">
+          <div><h1 class="page-title">Alerts</h1><p class="page-desc">Rows from <code>ops_alert_events</code>, grouped into bursts. Nothing currently notifies you when one is written.</p></div>
+          <div class="topbar-actions"><button class="btn btn-ghost" id="refreshBtn5">Refresh</button></div>
+        </div>
+        <div id="alertsHost"></div>
+      </div>
+
+      <!-- ============ STATS ============ -->
+      <div class="page" id="page-stats">
+        <div class="topbar">
+          <div><h1 class="page-title">Stats &amp; health</h1><p class="page-desc">Whether each source is fresh and extracting cleanly, and why rows are not.</p></div>
+        </div>
+        <div class="two-col">
+          <div class="card reason-card">
+            <div class="trend-title" style="margin-bottom:15px;">Failed extractions — <span class="mono" id="statsFailTotal">0</span> total, by reason</div>
+            <div id="reasonList"></div>
+          </div>
+          <div class="card" style="overflow:hidden; padding:0;">
+            <div class="scroll-x"><table class="health-table">
+              <thead><tr><th>Source</th><th>Last scrape</th><th>In jobs</th><th>Extraction errors</th><th>Status</th></tr></thead>
+              <tbody id="healthBody"></tbody>
+            </table></div>
+          </div>
+        </div>
+        <div class="section-label" style="margin-top:16px">Rows added to jobs, last 7 days</div>
+        <div class="card chart-card"><div id="chartHost2"></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ ROW DRAWER ============ -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head"><div style="min-width:0"><h3 id="drawerTitle"></h3><div id="drawerSub" class="chip-row"></div></div><button class="btn btn-ghost btn-sm" id="drawerClose">Close</button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot" id="drawerFoot"></div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal wide">
+    <h3>Connection &amp; triggers</h3>
+    <p>This page reads a built-in snapshot (taken Sep 19, 2026, 10:29 UTC). Connect to the live database to inspect current data and run actions.</p>
+
+    <label class="field-label" for="cfgUrl">Supabase project URL</label>
+    <input class="field-input" type="text" id="cfgUrl" placeholder="https://ndjvazyeykrzkqlipwbs.supabase.co">
+    <label class="field-label" for="cfgKey">Service-role key</label>
+    <input class="field-input" type="password" id="cfgKey" placeholder="eyJ…" autocomplete="off">
+    <div class="banner warn" style="margin-top:-4px">
+      <span>The service-role key bypasses RLS. It is kept in memory for this tab only and is never saved. Only use this file locally; never host it publicly with a key in it. A safer long-term setup is an authenticated admin edge function.</span>
+    </div>
+
+    <h4>Scraper triggers <span class="muted" style="font-weight:500">(n8n webhook or scraper service URL)</span></h4>
+    <p style="margin-bottom:10px">Scrapers run outside Supabase, so “Scrape” buttons POST to a URL you provide. Saved in this browser.</p>
+    <div id="hookRows"></div>
+
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" id="closeSettings">Close</button>
+      <button class="btn btn-ghost" id="disconnectBtn">Back to snapshot</button>
+      <button class="btn btn-primary" id="saveSettings">Save &amp; connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM ============ -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal">
+    <h3 id="confirmTitle">Confirm</h3>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmNo">Cancel</button>
+      <button class="btn btn-primary" id="confirmYes">Run</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+// =====================================================================
+//  SNAPSHOT — real values read from Supabase project ndjvazyeykrzkqlipwbs
+//  on 2026-09-19 10:29 UTC. Replaced by live data once you connect.
+// =====================================================================
+const Z = {total:0,done:0,failed:0,pending:0,processing:0,skipped:0,active:0,enriched:0,atCap:0,failedActive:0,noDeadlineActive:0,dups:0,expired:0,newToday:0,lastScraped:null};
+
+const SNAP = {
+  asOf: '2026-09-19T10:29:15Z',
+  T: { jobs:652, active:311, done:430, failed:203, pending:14, processing:3, skipped:2, atCap:181, enrichedActive:146, noDeadlineActive:25, expiredActive:0, dupsActive:0, stuck:0, newToday:1, other:5 },
+  src: {
+    jobinrwanda: {
+      jobs:{total:277,done:276,failed:1,pending:0,processing:0,skipped:0,active:57,enriched:57,atCap:1,failedActive:0,noDeadlineActive:0,dups:0,expired:220,newToday:0,lastScraped:'2026-09-14T12:17:00Z'},
+      raw:{total:24,pending:24,failed:0,done:0,skipped:0,promoted:0,tender:0,lastSeen:'2026-09-17T11:46:10Z'} },
+    brightermonday: {
+      jobs:{total:285,done:75,failed:193,pending:14,processing:3,skipped:0,active:198,enriched:33,atCap:171,failedActive:166,noDeadlineActive:19,dups:81,expired:12,newToday:0,lastScraped:'2026-09-17T11:50:05Z'},
+      raw:{total:434,pending:189,failed:151,done:78,skipped:16,promoted:65,tender:103,lastSeen:'2026-09-17T11:50:05Z'} },
+    ndangira: {
+      jobs:{total:66,done:63,failed:3,pending:0,processing:0,skipped:0,active:42,enriched:42,atCap:3,failedActive:3,noDeadlineActive:3,dups:0,expired:24,newToday:1,lastScraped:'2026-09-19T07:02:20Z'},
+      raw:{total:241,pending:173,failed:1,done:67,skipped:0,promoted:66,tender:0,lastSeen:'2026-09-16T13:02:09Z'} },
+    greatrwandajobs: {
+      jobs:{total:19,done:14,failed:3,pending:0,processing:0,skipped:2,active:14,enriched:14,atCap:3,failedActive:3,noDeadlineActive:3,dups:1,expired:2,newToday:0,lastScraped:'2026-09-15T08:42:09Z'},
+      raw:{total:386,pending:0,failed:0,done:19,skipped:367,promoted:19,tender:6,lastSeen:null} },
+    jobwebrwanda: {
+      jobs:{...Z},
+      raw:{total:300,pending:0,failed:0,done:0,skipped:0,promoted:0,tender:0,lastSeen:null,newestDeadline:'2026-08-24',past:291} },
+  },
+  keys: [
+    {id:10,provider:'gemini',status:'active',active:true,last_used_at:'2026-09-18T12:06:10Z',fail_count:0,rpm_limit:15,rpd_limit:200,requests_today:1,day_window_start:'2026-09-18T12:06:10Z',rpm_blocked_until:'2026-09-19T10:29:13Z',rpd_blocked_until:null},
+    {id:11,provider:'gemini',status:'active',active:true,last_used_at:'2026-09-19T07:22:17Z',fail_count:0,rpm_limit:15,rpd_limit:200,requests_today:20,day_window_start:'2026-09-19T00:07:33Z',rpm_blocked_until:'2026-09-19T10:28:39Z',rpd_blocked_until:null},
+    {id:12,provider:'openrouter',status:'active',active:false,last_used_at:'2026-05-08T06:59:00Z',fail_count:1,rpm_limit:60,rpd_limit:999999,requests_today:0,day_window_start:'2026-05-11T08:35:35Z',rpm_blocked_until:null,rpd_blocked_until:null},
+    {id:13,provider:'openrouter',status:'inactive',active:false,last_used_at:'2026-05-25T07:35:17Z',fail_count:1,rpm_limit:15,rpd_limit:999999,requests_today:48,day_window_start:'2026-05-25T07:05:38Z',rpm_blocked_until:null,rpd_blocked_until:null},
+    {id:14,provider:'openrouter',status:'inactive',active:false,last_used_at:'2026-09-15T20:24:31Z',fail_count:0,rpm_limit:60,rpd_limit:999999,requests_today:148,day_window_start:'2026-09-15T08:40:32Z',rpm_blocked_until:null,rpd_blocked_until:null},
+  ],
+  alerts: [
+    [1,'2026-09-16T12:57:11Z'],[2,'2026-09-16T13:08:01Z'],[3,'2026-09-16T13:08:45Z'],
+    [4,'2026-09-18T04:00:13Z'],[5,'2026-09-18T04:00:13Z'],[6,'2026-09-18T04:00:13Z'],
+    [7,'2026-09-18T12:40:13Z'],[8,'2026-09-18T13:10:13Z'],[9,'2026-09-18T13:54:13Z'],
+    [10,'2026-09-18T14:06:13Z'],[11,'2026-09-18T14:06:13Z'],[12,'2026-09-18T14:06:13Z'],[13,'2026-09-18T14:06:13Z'],
+    [14,'2026-09-18T14:16:13Z'],[15,'2026-09-18T14:16:13Z'],[16,'2026-09-18T14:16:13Z'],
+  ].map(([id,t])=>({id,created_at:t,severity:'critical',code:'ai_key_pool_exhausted',message:'process-job: no usable Gemini/OpenRouter key in pool',detail:'Error: All keys are over their daily/rate limit or excluded'})),
+  errors: [
+    {reason:'Gemini 429 — rate / quota limited', count:346, kind:'transient', note:'Retried automatically while under 3 attempts; after that the retry cron skips the row.'},
+    {reason:'All keys exhausted or cooling down', count:6, kind:'pool', note:'No usable key at that moment. Also raises a critical alert.'},
+    {reason:'Gemini 503 — model overloaded', count:3, kind:'transient', note:'Google-side; retried automatically.'},
+  ],
+  fill: {active:311, deadline:286, salary:70, industry:146, job_function:146, skills_t1:140, min_degree:146, experience:146, job_type:146, ai_summary:146, languages:146, local_company:146, company_description:60, company_logo:113, contact_emails:8, apply_contact:311},
+  trend: [{day:'Sun 13',count:0},{day:'Mon 14',count:9},{day:'Tue 15',count:76},{day:'Wed 16',count:264},{day:'Thu 17',count:21},{day:'Fri 18',count:0},{day:'Today',count:1,today:true}],
+  dist: {
+    industry:[['ngo_development',43],['healthcare_pharma',18],['agriculture_agribusiness',17],['transport_logistics',16],['government_public_sector',10],['education_academia',9],['manufacturing_industry',9],['banking_finance',7],['consulting_advisory',5],['hospitality_tourism',4],['technology_it',4],['real_estate_construction',2],['retail_ecommerce',1],['telecom',1]],
+    fn:[['project_management',19],['operations_admin',16],['finance_accounting',15],['medical_lab',10],['ngo_programs',10],['teaching_training',8],['agriculture_field',7],['health_clinical',6]],
+  },
+  vocab: {total:867, approved:415},
+  dl: {source_field:284, ai:5, none:22},
+  extra: {
+    nearDupPairs:14, nearDupExample:'“Gender-Transformative & Social Inclusion Expert (GTSI)” at Expertise France is active 3 times — titles differ only by a “job at …” suffix, a “deadline 23092026” suffix and an &amp; entity, so the exact dedup_key never matches.',
+    stagedTenders:76, rlsOff:['raw_jobinrwanda_jobs'], users:0, matchScores:0, cvs:0, benchmarks:0,
+  },
+  cron: [
+    {id:27,name:'ai-job-extractor-drip',schedule:'*/3 * * * *',does:'Calls the ai-job-extractor edge function (2 rows per source: staging → AI → jobs). Skips the tick when no key has quota.',lastRun:'2026-09-19T10:27:00Z',runs24:480,failed24:0,active:true,fn:null},
+    {id:28,name:'deactivate-expired-jobs',schedule:'15 2 * * *',does:'Sets is_active=false for jobs past their deadline, and for jobs with no deadline untouched for 60+ days.',lastRun:'2026-09-19T02:15:00Z',runs24:1,failed24:0,active:true,fn:'deactivate_expired_jobs'},
+    {id:29,name:'flag-duplicate-jobs',schedule:'30 2 * * *',does:'Flags exact title|company duplicates (dedup_key), keeps the earliest extracted row, deactivates the rest.',lastRun:'2026-09-19T02:30:00Z',runs24:1,failed24:0,active:true,fn:'flag_duplicate_jobs'},
+    {id:30,name:'retry-failed-staging-rows',schedule:'*/2 * * * *',does:'Requeues failed BrighterMonday / Ndangira / GreatRwandaJobs staging rows with transient errors and < 3 attempts.',lastRun:'2026-09-19T10:28:00Z',runs24:361,failed24:0,active:true,fn:'retry_failed_staging_rows'},
+    {id:31,name:'retry-failed-jobs-drip',schedule:'*/2 * * * *',does:'retry_failed_jobs(3, 5): recovers rows stuck in “processing” > 5 min, then re-sends up to 5 failed/pending jobs to process-job, 2.5 s apart.',lastRun:'2026-09-19T10:28:00Z',runs24:698,failed24:0,active:true,fn:'retry_failed_jobs'},
+  ],
+  hasRunsTable:false,
+};
+
+// Edge functions (from list_edge_functions). role: live = part of the pipeline, legacy = old ESCO/test, byoj = user-submitted jobs
+const EDGE = [
+  {n:'process-job',v:11,jwt:false,role:'live',d:'Enriches one jobs row (missing-fields-only prompt). Checks a shared bearer token itself.'},
+  {n:'ai-job-extractor',v:11,jwt:true,role:'live',d:'Pulls pending staging rows for BrighterMonday / Ndangira / GreatRwandaJobs, extracts, promotes into jobs.'},
+  {n:'process-byoj-job',v:1,jwt:true,role:'live',d:'“Bring your own job” extraction for user-submitted postings.'},
+  {n:'extract-job',v:5,jwt:true,role:'legacy',d:'Earlier extractor.'},
+  {n:'extract-job-esco',v:8,jwt:false,role:'legacy',d:'ESCO-era extractor (replaced by Gemini pipeline).'},
+  {n:'resolve-esco-vector',v:10,jwt:false,role:'legacy',d:'ESCO vector skill resolver.'},
+  {n:'esco-resolve-v2',v:1,jwt:false,role:'legacy',d:'ESCO resolver v2.'},
+  {n:'pipeline-quality-check',v:1,jwt:false,role:'legacy',d:'One-off quality check.'},
+  {n:'deploy-test',v:1,jwt:false,role:'legacy',d:'Deployment test stub.'},
+  {n:'embed-esco-batch (+ v2…v7, -safe)',v:'×8',jwt:true,role:'legacy',d:'Eight iterations of the ESCO embedding batch job.'},
+  {n:'embed-esco-openrouter',v:1,jwt:true,role:'legacy',d:'ESCO embeddings via OpenRouter.'},
+];
+const TRIGGERS = [
+  ['jobs','trg_a_normalize_job_row','BEFORE INSERT/UPDATE','Cleans HTML from description, forces is_active=false on duplicates, parses the BrighterMonday label/value pairs.'],
+  ['jobs','trg_enforce_tender_salary_null','BEFORE INSERT/UPDATE','Rejects salary values on tender/procurement-titled rows.'],
+  ['jobs','trg_jobs_invoke_process_job','AFTER INSERT','4 gates (short text, not a job, expired, duplicate) then sends the row to process-job.'],
+  ['raw_brightermonday_jobs','trg_clean_brightermonday_description','BEFORE INSERT/UPDATE','Strips full-page HTML down to the description.'],
+  ['raw_brightermonday_jobs','trg_sync_raw_brightermonday_to_jobs','AFTER INSERT/UPDATE','Copies BrighterMonday staging rows into jobs (the second ingestion path).'],
+];
+const DBFN = [
+  {fn:'deactivate_expired_jobs',args:[],label:'Deactivate expired jobs',d:'Past-deadline rows → inactive; no-deadline rows older than 60 days → inactive.'},
+  {fn:'flag_duplicate_jobs',args:[],label:'Flag exact duplicates',d:'Exact title|company matches → keep earliest, deactivate the rest.'},
+  {fn:'retry_failed_staging_rows',args:['p_max_attempts'],label:'Requeue failed staging rows',d:'Transient-error rows with < N attempts go back to pending.',argDefaults:{p_max_attempts:3}},
+  {fn:'retry_failed_jobs',args:['p_max_attempts','p_limit'],label:'Retry failed jobs now',d:'Sends up to N failed/pending jobs to process-job. Sleeps 2.5 s per row, so keep N small.',argDefaults:{p_max_attempts:3,p_limit:5}},
+];
+
+// Sample rows for snapshot mode — real rows from jobs (positional to keep this compact)
+const _S = (a)=>({src:a[0],title:a[1],company:a[2],location:a[3],deadline:a[4],status:a[5],active:a[6],ct:a[7],skip:a[8],error:a[9],att:a[10],industry:a[11],fn:a[12],level:a[13],type:a[14],deg:a[15],smin:a[16],smax:a[17],dsrc:a[18],scraped:a[19],dup:a[20],t1:a[21]});
+const E429_10='Error: Gemini key 10 rate/quota limited: 429', E429_11='Error: Gemini key 11 rate/quota limited: 429';
+const SAMPLE = [
+ ['brightermonday','Customer Service Representative – Non-Voice','Harmony Support BPO Ltd','Kigali',null,'done',true,'job',null,'',1,'consulting_advisory','customer_service','entry','full_time','bachelor',400000,1200000,'ai','2026-09-17T11:50:05Z',false,5],
+ ['brightermonday','Office Manager','Rwanda Institute of Mediation (RIM)','Kigali',null,'done',true,'job',null,'',3,'ngo_development','operations_admin','mid','full_time','bachelor',400000,1200000,'ai','2026-09-17T11:50:05Z',false,5],
+ ['brightermonday','Program Coordinator- Infrastructure','Operation Smile','Kigali',null,'done',true,'job',null,'',1,'ngo_development','project_management','senior','full_time','bachelor',400000,1200000,null,'2026-09-17T11:50:05Z',false,5],
+ ['brightermonday','Expression of Interest for Local Partners to Support the Sus…','World Vision International Rwanda','Kigali',null,'done',true,'job',null,'',3,'ngo_development','ngo_programs','mid','contract','none',400000,1200000,'ai','2026-09-17T11:50:05Z',false,5],
+ ['brightermonday','People and Culture Manager','Letshego Rwanda Limited','Kigali',null,'failed',true,'job',null,E429_10,3,null,null,null,null,null,null,null,null,'2026-09-17T11:50:05Z',false,0],
+ ['brightermonday','Senior Ipc Mnch Technical Advisor','Jhpiego','Kigali',null,'failed',true,'job',null,E429_11,3,null,null,null,null,null,null,null,null,'2026-09-17T11:50:05Z',false,0],
+ ['brightermonday','Technical Support Engineers','Wicloud','Kigali',null,'failed',true,'job',null,E429_10,3,'technology_it','customer_service','mid','freelance','bachelor',400000,1200000,null,'2026-09-17T11:50:05Z',false,5],
+ ['brightermonday','IT Lead','Wicloud','Kigali',null,'failed',true,'job',null,E429_10,3,null,null,null,null,null,null,null,null,'2026-09-17T11:50:05Z',false,0],
+ ['brightermonday','Space Applications Expert, Earth Observation & Copernicus','NTU International A/S','Kigali',null,'failed',true,'job',null,E429_10,3,null,null,null,null,null,null,null,null,'2026-09-17T11:50:05Z',false,0],
+ ['brightermonday','Planning, Monitoring & Evaluation Technical Advisor (re-adve…','SNV','Kigali','2026-11-23','done',true,'job',null,'',2,'ngo_development','project_management','senior','full_time','master',400000,1200000,'source_field','2026-09-16T13:56:18Z',false,5],
+ ['brightermonday','Marketing','Stable Logistics Ltd','Kigali','2026-09-20','done',false,'job','duplicate_reused_extraction','',0,'transport_logistics','marketing_digital','entry','full_time','none',150000,300000,'source_field','2026-09-16T13:29:21Z',true,2],
+ ['greatrwandajobs','Product Operations Lead (Fixed-Term) job at One Acre Fund','One Acre Fund','Nairobi, Kenya or Kigali','2026-11-03','done',true,'job',null,'',1,'ngo_development','product_management','lead','full_time','bachelor',null,null,'source_field','2026-09-15T08:42:09Z',false,13],
+ ['greatrwandajobs','Carbon Finance Manager (Fixed-Term) job at One Acre Fund','One Acre Fund','Kigali, Rwanda','2026-10-15','done',true,'job',null,'',1,'agriculture_agribusiness','finance_accounting','mid','full_time','bachelor',null,null,'source_field','2026-09-15T08:41:57Z',false,7],
+ ['greatrwandajobs','Strategic Partnerships Manager / Senior Associate (Fixed-Ter…','One Acre Fund','Kigali','2026-10-23','done',true,'job',null,'',1,'ngo_development','project_management','senior','full_time','bachelor',null,null,'source_field','2026-09-15T08:41:29Z',false,13],
+ ['greatrwandajobs','Head of Department - Leisure, Tourism and Hotel Management D…','East African University Rwanda ( EAUR )','Nyagatare Campus','2026-09-25','done',true,'job',null,'',1,'education_academia','teaching_training','senior','full_time','phd',null,null,'source_field','2026-09-15T08:41:18Z',false,8],
+ ['greatrwandajobs','Chief Accountant job at East African University Rwanda ( EAUR )','East African University Rwanda ( EAUR )','Nyagatare Campus','2026-09-25','done',true,'job',null,'',1,'education_academia','finance_accounting','senior','full_time','master',null,null,'source_field','2026-09-15T08:41:10Z',false,8],
+ ['greatrwandajobs','Estate Officer job at East African University Rwanda ( EAUR )','East African University Rwanda ( EAUR )','Nyagatare Campus','2026-09-25','done',false,'job','duplicate_of_existing_posting','',1,'education_academia','operations_admin','mid','full_time','bachelor',null,null,'source_field','2026-09-15T08:41:01Z',true,6],
+ ['greatrwandajobs','Geologist – Mining job at Lyon Mining Services Ltd','Lyon Mining Services Ltd','Kigali',null,'failed',true,'job',null,E429_11,3,'consulting_advisory','trades_technical','mid','full_time','bachelor',null,null,null,'2026-09-14T19:36:32Z',false,14],
+ ['greatrwandajobs','Gender-Transformative & Social Inclusion Expert (GTSI) (H/F)','Expertise France','Kigali',null,'failed',true,'job',null,E429_11,3,'ngo_development','ngo_programs','senior','full_time','bachelor',null,null,null,'2026-09-14T19:36:15Z',false,19],
+ ['greatrwandajobs','Billing and Collection Agent job at Echowa Ltd','Echowa Ltd','Kigali',null,'failed',true,'job',null,E429_11,3,'consulting_advisory','finance_accounting','mid','full_time','bachelor',null,null,null,'2026-09-14T19:34:43Z',false,36],
+ ['jobinrwanda','Electrical and Instrumentation Technician','Africa Improved Foods Rwanda','Kigali','2026-09-18','failed',false,'job','deadline_passed',E429_11,3,null,null,null,null,null,null,null,'source_field','2026-09-14T12:17:00Z',false,0],
+ ['jobinrwanda','Commis II','Rwanda Ultimate Golf Course','KIGALI','2026-09-18','done',false,'job','deadline_passed','',1,'hospitality_tourism','hospitality_service','entry','full_time','certificate',150000,250000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['jobinrwanda','Agronomist - FXBVILLAGE Project','FXB Rwanda','Kigali','2026-09-20','done',true,'job',null,'',1,'ngo_development','agriculture_field','mid','contract','bachelor',350000,600000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['jobinrwanda','Senior Internal Auditor','INTWARI SACCO GICUMBI (ISG)','Gicumbi','2026-09-25','done',true,'job',null,'',1,'banking_finance','audit_compliance','senior','full_time','bachelor',500000,900000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['jobinrwanda','Communications Officer','BRAC','KIGALI','2026-09-18','done',false,'job','deadline_passed','',1,'ngo_development','communications_pr','mid','full_time','bachelor',600000,1000000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['jobinrwanda','Biomedical Engineer','Rwanda Medical Supply Ltd','Kigali','2026-09-16','done',false,'job','deadline_passed','',1,'healthcare_pharma','supply_chain_procurement','mid','full_time','bachelor',500000,800000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['jobinrwanda','Hairdressing Teacher','Impanuro Girls Initiative (IGI)','Kigali','2026-09-20','done',true,'job',null,'',1,'ngo_development','teaching_training','mid','full_time','diploma',250000,400000,'source_field','2026-09-12T11:31:46Z',false,5],
+ ['ndangira','Finance Assistant at Raising The Village','Raising The Village','Rwanda','2026-10-15','done',true,'job',null,'',0,'ngo_development','finance_accounting','mid','full_time','bachelor',null,null,'source_field','2026-09-19T07:02:20Z',false,14],
+ ['ndangira','Legal Officer at Gabiro Agribusiness Hub (GAH) Ltd','Gabiro Agribusiness Hub','Nyagatare','2026-10-05','done',true,'job',null,'',0,'agriculture_agribusiness','legal','senior','full_time','bachelor',null,null,'source_field','2026-09-17T11:39:34Z',false,14],
+ ['ndangira','People and Culture Manager at Letshego Rwanda Limited','Letshego Rwanda Limited','Kigali','2026-09-29','done',true,'job',null,'',0,'banking_finance','human_resources','senior','full_time','bachelor',null,null,'ai','2026-09-17T07:10:59Z',false,14],
+ ['ndangira','Head of Organization Design & Total Rewards at RwandAir Ltd','RwandAir Ltd','Rwanda','2026-09-28','done',true,'job',null,'',0,'transport_logistics','human_resources','executive','full_time','bachelor',null,null,'ai','2026-09-17T07:07:54Z',false,17],
+ ['ndangira','Research & Innovation Grants Management Specialist at Natio…','National Council for Science and Technol…','Rwanda','2026-09-24','done',true,'job',null,'',0,'government_public_sector','project_management','mid','full_time','master',null,null,'source_field','2026-09-17T07:01:44Z',false,9],
+ ['ndangira','Gender-Transformative & Social Inclusion Expert (GTSI) (H/F)','Expertise France','Kigali','2026-09-23','done',true,'job',null,'',1,'ngo_development','ngo_programs','senior','full_time','bachelor',null,null,'source_field','2026-09-15T20:21:36Z',false,12],
+ ['ndangira','Legal Advisor at Eastern province (EP)','Eastern province','Rwanda',null,'failed',true,'job',null,E429_11,3,'government_public_sector','legal','mid','full_time','bachelor',null,null,null,'2026-09-14T19:37:09Z',false,17],
+ ['ndangira','Administration Assistant at Eastern province (EP)','Eastern province','Rwanda',null,'failed',true,'job',null,E429_11,3,'government_public_sector','operations_admin','entry','full_time','bachelor',null,null,null,'2026-09-14T19:37:00Z',false,28],
+ ['ndangira','Regional Audit at Eastern province (EP)','Eastern province','Rwanda',null,'failed',true,'job',null,E429_11,3,'government_public_sector','audit_compliance','mid','full_time','bachelor',null,null,null,'2026-09-14T19:36:51Z',false,20],
+].map(_S);
+
+const STAGING_SAMPLE = {
+  jobinrwanda: [
+    ['Customer Care Officer','INDONGOZI SACCO NYAMASHEKE','Nyamasheke','2026-09-23'],['Teller','INDONGOZI SACCO NYAMASHEKE','Nyamasheke','2026-09-23'],
+    ['Legal Officer','Umutanguha Finance Company Plc','kigali','2026-09-28'],['Relationship Officer','Umutanguha Finance Company Plc','KIGALI','2026-09-28'],
+    ['Accountant/PSAC Project','The National Agricultural Export Develop…','kigali','2026-09-18'],['Customer Service Representative – Non-Voice','Harmony Support BPO Ltd','Kigali','2026-10-15'],
+  ].map(a=>({title:a[0],company:a[1],location:a[2],deadline:a[3],status:'pending',ct:'job',att:0,error:'',scraped:'2026-09-17T11:46:10Z',url:null,src:'jobinrwanda',staging:true})),
+  jobwebrwanda: [
+    ['Rwanda Forest Landscape Restoration Program Design Coordinat…','One Acre Fund','Rwanda','2026-08-24'],['Senior Accounting Coordinator at One Acre Fund','One Acre Fund','Kigali','2026-08-02'],
+    ['Teachers: Primary &#8211; Kindergarten at Ecole Primaire Hen…','Ecole Primaire Henri Matisse','Kigali','2026-07-22'],['Head of Department of Business Administration  at East Afric…','East African University Rwanda','Rwanda','2026-07-10'],
+    ['ELV Site Supervisor at Shelter Group Africa','Shelter Group Africa','Kigali','2026-07-09'],['ELV Administrator / Document Controller at Shelter Group Afr…','Shelter Group Africa','Kigali','2026-07-09'],
+  ].map(a=>({title:a[0],company:a[1],location:a[2],deadline:a[3],status:'unprocessed',ct:null,att:null,error:'',scraped:null,url:null,src:'jobwebrwanda',staging:true})),
+};
+
+// Source definitions ---------------------------------------------------------
+const SRC = [
+  {id:'jobinrwanda', name:'Job in Rwanda', url:'jobinrwanda.com', letter:'J', match:'jobinrwanda', extractor:false, hasStaging:true,
+   path:'Direct writer → jobs → process-job', stageName:'raw_jobinrwanda_jobs (unused)',
+   notes:[
+    '<b>Direct writer.</b> An external scraper (not visible from Supabase) inserts straight into <code>jobs</code>; a DB trigger then sends each new row to <code>process-job</code>.',
+    '<b>Unused staging table.</b> <code>raw_jobinrwanda_jobs</code> holds rows that nothing reads: <code>ai-job-extractor</code> does not support this source.',
+    '<b>Deadline comes pre-filled</b> from the source on every row (<code>deadline_source = source_field</code>).',
+    '<b>Security:</b> <code>raw_jobinrwanda_jobs</code> has row-level security disabled — anyone with the anon key can read or modify it.']},
+  {id:'brightermonday', name:'BrighterMonday', url:'brightermonday.co.rw', letter:'B', match:'brightermonday', extractor:true, hasStaging:true,
+   path:'Playwright → raw_brightermonday_jobs → AI → jobs (+ sync trigger)', stageName:'raw_brightermonday_jobs',
+   notes:[
+    '<b>Two ingestion paths write to <code>jobs</code>:</b> staging → <code>ai-job-extractor</code> (65 promoted) and a sync trigger / direct writer → <code>process-job</code>. Both draw on the same 2-key pool with no coordination. Which one is canonical is still undecided.',
+    '<b>Needs a real browser.</b> Pagination and every filter are client-side only, so the scraper runs on Playwright (n8n Cloud can’t).',
+    '<b>Mixed feed.</b> Tenders, EOIs and paid training programs sit alongside jobs. <b>76 staging rows</b> already labelled tender / paid_program are still pending or failed and would be sent to the AI.',
+    '<b>Structured data:</b> the JSON-LD deadline (<code>valid_through</code>) is used when present; salary JSON-LD is rarely populated.']},
+  {id:'ndangira', name:'Ndangira', url:'ndangira.com', letter:'N', match:'ndangira', extractor:true, hasStaging:true,
+   path:'n8n HTTP → raw_ndangira_jobs → AI → jobs', stageName:'raw_ndangira_jobs',
+   notes:[
+    '<b>Server-rendered HTML,</b> so a plain n8n HTTP workflow is enough (no Playwright).',
+    '<b>Duplicates not flagged yet.</b> 0 of 241 staging rows have <code>is_duplicate</code> set, although many postings also exist on other boards — the pre-promotion dedup step is not populating it.',
+    '<b>Titles carry an “ at Company” suffix,</b> which stops <code>jobs.dedup_key</code> matching the same posting on another board.']},
+  {id:'greatrwandajobs', name:'Great Rwanda Jobs', url:'greatrwandajobs.com', letter:'G', match:'greatrwandajobs', extractor:true, hasStaging:true,
+   path:'Scraper → jobs_greatrwandajobs → AI → jobs', stageName:'jobs_greatrwandajobs',
+   notes:[
+    '<b>The staging table is <code>jobs_greatrwandajobs</code></b> (no <code>raw_</code> prefix). 361 of 386 rows are <code>skipped_expired</code> and 6 <code>skipped_tender</code> — the pre-AI gate is working here.',
+    '<b>No <code>scraped_at</code> column,</b> so “last scraped” can’t be read from the database for this source.',
+    '<b><code>company_description</code> is 0/386 populated;</b> the AI reads it from the posting text instead.',
+    '<b>Titles carry a “ job at Company” suffix</b> (same dedup weakness as Ndangira).']},
+  {id:'jobwebrwanda', name:'JobWeb Rwanda', url:'jobwebrwanda.com', letter:'W', match:'jobwebrwanda', extractor:false, hasStaging:true, noPipeline:true,
+   path:'RSS → jobs_jobwebrwanda → (nothing)', stageName:'jobs_jobwebrwanda',
+   notes:[
+    '<b>No pipeline.</b> 300 rows sit in <code>jobs_jobwebrwanda</code>; none have reached <code>jobs</code>. The table has no <code>extraction_status</code> column and <code>ai-job-extractor</code> doesn’t know this source.',
+    '<b>Looks abandoned.</b> Newest deadline is 2026-08-24; 291 rows are past deadline, 9 have none. The RSS feed was confirmed working earlier, so the scraper simply isn’t running.',
+    '<b>Titles hold raw HTML entities</b> (e.g. “&amp;#8211;”) — there is no cleaning step for this table.']},
+];
+const SRC_BY = Object.fromEntries(SRC.map(s=>[s.id,s]));
+
+// PostgREST column maps for staging tables (live mode) — description_html is deliberately never selected (25–79 KB per row)
+const STG = {
+  brightermonday:{table:'raw_brightermonday_jobs',key:'external_id',sel:'external_id,source_url,title,company_name,location_raw,valid_through_jsonld,extraction_status,extraction_error,extraction_attempts,content_type,scraped_at,last_seen_at,promoted_job_id',order:'last_seen_at.desc',q:['title','company_name'],
+    map:r=>({id:r.external_id,title:r.title,company:r.company_name,location:r.location_raw,deadline:r.valid_through_jsonld?String(r.valid_through_jsonld).slice(0,10):null,status:r.extraction_status,ct:r.content_type,error:r.extraction_error,att:r.extraction_attempts,scraped:r.last_seen_at||r.scraped_at,url:r.source_url,promoted:r.promoted_job_id})},
+  ndangira:{table:'raw_ndangira_jobs',key:'id',sel:'id,source_url,title_raw,title_clean,company_name,location_raw,deadline_date,extraction_status,extraction_error,extraction_attempts,is_duplicate,scraped_at,last_seen_at,promoted_job_id',order:'last_seen_at.desc',q:['title_raw','company_name'],
+    map:r=>({id:r.id,title:r.title_clean||r.title_raw,company:r.company_name,location:r.location_raw,deadline:r.deadline_date,status:r.extraction_status,ct:null,error:r.extraction_error,att:r.extraction_attempts,scraped:r.last_seen_at||r.scraped_at,url:r.source_url,promoted:r.promoted_job_id,dupFlag:r.is_duplicate})},
+  greatrwandajobs:{table:'jobs_greatrwandajobs',key:'id',sel:'id,job_url,title,company,location,deadline,extraction_status,extraction_error,extraction_attempts,content_type,promoted_job_id',order:'deadline.desc.nullslast',q:['title','company'],
+    map:r=>({id:r.id,title:r.title,company:r.company,location:r.location,deadline:r.deadline,status:r.extraction_status,ct:r.content_type,error:r.extraction_error,att:r.extraction_attempts,scraped:null,url:r.job_url,promoted:r.promoted_job_id})},
+  jobinrwanda:{table:'raw_jobinrwanda_jobs',key:'id',sel:'id,job_url,source_url,title,company,location,deadline,extraction_status,extraction_error,scraped_at,promoted_job_id,content_type',order:'scraped_at.desc',q:['title','company'],
+    map:r=>({id:r.id,title:r.title,company:r.company,location:r.location,deadline:r.deadline,status:r.extraction_status,ct:r.content_type,error:r.extraction_error,att:null,scraped:r.scraped_at,url:r.job_url||r.source_url,promoted:r.promoted_job_id})},
+  jobwebrwanda:{table:'jobs_jobwebrwanda',key:'id',sel:'id,job_url,title,company,location,deadline',order:'deadline.desc.nullslast',q:['title','company'],
+    map:r=>({id:r.id,title:r.title,company:r.company,location:r.location,deadline:r.deadline,status:'unprocessed',ct:null,error:'',att:null,scraped:null,url:r.job_url,promoted:null})},
+};
+const JOBS_SEL = 'id,title,company,location,deadline,job_url,extraction_status,extraction_error,extraction_attempts,is_active,content_type,skip_reason,industry,job_function,experience_level_new,job_type_new,min_degree,salary_min,salary_max,deadline_source,scraped_at,duplicate_of_job_id,skills_t1';
+// =====================================================================
+//  CORE — helpers, state, REST client, live loader
+// =====================================================================
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = n => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('en-US');
+const pc = (a,b) => b ? Math.round(a/b*100) : 0;
+const clone = o => JSON.parse(JSON.stringify(o));
+const T = iso => iso ? new Date(iso).getTime() : NaN;
+const pretty = s => s ? String(s).replace(/_/g,' ').replace(/^./, c=>c.toUpperCase()) : '—';
+const trunc = (s,n) => { s = String(s ?? ''); return s.length > n ? s.slice(0,n-1)+'…' : s; };
+
+const S = { mode:'live', D:null, url:'https://ndjvazyeykrzkqlipwbs.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kanZhenlleWtyemtxbGlwd2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0OTAzMzAsImV4cCI6MjA4NzA2NjMzMH0.OXKzbKKc05qYmy9nCFNyA5JwJVXJYz8u8Y9eGHCSdxo', hooks:{}, busy:false, page:'overview', vocabTop:null, tblSpec:{} };
+let D = null;
+
+function REF(){ return S.mode === 'live' ? Date.now() : T(SNAP.asOf); }
+function ago(iso){
+  if(!iso) return 'never';
+  const ms = REF() - T(iso); if(isNaN(ms)) return '—';
+  const m = Math.round(ms/60000);
+  if(m < 1) return 'just now'; if(m < 60) return m+' min ago';
+  const h = Math.round(m/60); if(h < 48) return h+'h ago';
+  return Math.round(h/24)+'d ago';
+}
+function hoursSince(iso){ return (REF() - T(iso)) / 3600000; }
+function stamp(iso){ return iso ? new Date(iso).toISOString().slice(5,16).replace('T',' ') + ' UTC' : '—'; }
+function shortDate(iso){ return iso ? String(iso).slice(0,10) : '—'; }
+function todayStr(){ return new Date(REF()).toISOString().slice(0,10); }
+function fmtTime(d){ return new Date(d).toISOString().slice(5,19).replace('T',' '); }
+function humanCron(s){
+  let m = s.match(/^\*\/(\d+) \* \* \* \*$/); if(m) return 'every '+m[1]+' min';
+  m = s.match(/^(\d+) (\d+) \* \* \*$/); if(m) return 'daily at '+String(m[2]).padStart(2,'0')+':'+String(m[1]).padStart(2,'0')+' UTC';
+  return s;
+}
+function srcOfUrl(u){
+  u = String(u || '');
+  for(const s of SRC) if(u.includes(s.match)) return s.id;
+  return 'other';
+}
+function errShort(e){ return trunc(String(e || '').replace(/^Error:\s*/,'').replace(/\s+/g,' '), 52); }
+function errClass(e){
+  e = String(e || '');
+  if(/all keys|no active api key|over their daily/i.test(e)) return 'pool';
+  if(/429|rate|quota/i.test(e)) return '429';
+  if(/50[234]|overload|high demand|unavailable/i.test(e)) return '503';
+  if(/too short|missing/i.test(e)) return 'short';
+  return 'other';
+}
+const ERR_META = {
+  '429':{reason:'Gemini 429 — rate / quota limited',kind:'transient',note:'Retried automatically while under 3 attempts; after that the retry cron skips the row.'},
+  'pool':{reason:'All keys exhausted or cooling down',kind:'pool',note:'No usable key at that moment. Also raises a critical alert.'},
+  '503':{reason:'Gemini 503 — model overloaded',kind:'transient',note:'Google-side; retried automatically.'},
+  'short':{reason:'Description missing or too short',kind:'content',note:'Not retryable — needs a better scrape.'},
+  'other':{reason:'Other / unclassified',kind:'other',note:'Open a failed row to read the full error.'},
+};
+
+// ---------------- REST client (live mode only) ----------------
+function parseCount(cr){ if(!cr) return null; const m = cr.match(/\/(\d+)$/); return m ? +m[1] : null; }
+async function api(path, opt = {}){
+  if(S.mode !== 'live') throw new Error('Not connected');
+  const res = await fetch(S.url.replace(/\/$/,'') + path, {
+    method: opt.method || 'GET',
+    headers: Object.assign({apikey:S.key, Authorization:'Bearer '+S.key, 'Content-Type':'application/json'}, opt.headers || {}),
+    body: opt.body !== undefined ? JSON.stringify(opt.body) : undefined,
+  });
+  const txt = await res.text(); let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch(e) { data = txt; }
+  if(!res.ok) throw new Error((data && data.message) || (typeof data === 'string' && data) || ('HTTP '+res.status));
+  return {data, count: parseCount(res.headers.get('content-range')), status: res.status};
+}
+const rest = (p,o) => api('/rest/v1/'+p, o);
+async function fetchAll(path){
+  let out = [], from = 0;
+  for(;;){
+    const {data} = await rest(path, {headers:{Range:from+'-'+(from+999), 'Range-Unit':'items'}});
+    out = out.concat(data || []);
+    if(!data || data.length < 1000) break;
+    from += 1000;
+  }
+  return out;
+}
+async function countOf(path){
+  const r = await rest(path + (path.includes('?') ? '&' : '?') + 'select=*', {headers:{Prefer:'count=exact', Range:'0-0', 'Range-Unit':'items'}});
+  return r.count ?? 0;
+}
+
+// ---------------- Live loader + aggregator ----------------
+const LIVE_JOBS_SEL = 'id,job_url,extraction_status,extraction_error,extraction_attempts,is_active,content_type,skip_reason,deadline,industry,job_function,skills_t1,min_degree,experience_level_new,job_type_new,ai_summary,company_description,company_logo_url,contact_emails,languages_required,is_local_company,apply_contact,salary_min,deadline_source,scraped_at,duplicate_of_job_id,processing_started_at';
+const LIVE_RAW_SEL = {
+  brightermonday:'extraction_status,extraction_error,content_type,promoted_job_id,last_seen_at',
+  ndangira:'extraction_status,extraction_error,promoted_job_id,last_seen_at,is_duplicate',
+  greatrwandajobs:'extraction_status,extraction_error,content_type,promoted_job_id',
+  jobinrwanda:'extraction_status,extraction_error,promoted_job_id,scraped_at,content_type',
+  jobwebrwanda:'deadline',
+};
+async function optional(fn){ try { return await fn(); } catch(e) { return null; } }
+
+async function loadLive(){
+  const rawIds = Object.keys(STG);
+  const [jobs, keys, alertsR, ...rest_] = await Promise.all([
+    fetchAll('jobs?select='+LIVE_JOBS_SEL),
+    fetchAll('gemini_keys?select=id,provider,status,active,last_used_at,fail_count,rpm_limit,rpd_limit,requests_today,day_window_start,rpm_blocked_until,rpd_blocked_until&order=id'),
+    rest('ops_alert_events?select=*&order=created_at.desc&limit=200'),
+    ...rawIds.map(id => fetchAll(STG[id].table+'?select='+LIVE_RAW_SEL[id])),
+  ]);
+  const raws = Object.fromEntries(rawIds.map((id,i)=>[id, rest_[i]]));
+  const [vocabTotal, vocabOk, users, scores, cvs, bench, cronRpc, nearRpc, runsProbe] = await Promise.all([
+    optional(()=>countOf('skill_vocabulary')), optional(()=>countOf('skill_vocabulary?is_approved=eq.true')),
+    optional(()=>countOf('users')), optional(()=>countOf('match_scores')), optional(()=>countOf('generated_cvs')), optional(()=>countOf('salary_benchmarks')),
+    optional(()=>rest('rpc/admin_cron_overview',{method:'POST',body:{}})),
+    optional(()=>rest('rpc/admin_near_duplicates',{method:'POST',body:{p_threshold:0.7}})),
+    optional(()=>rest('scrape_runs?select=*&order=started_at.desc&limit=20')),
+  ]);
+  const d = aggregateLive(jobs, raws, keys, alertsR.data || []);
+  if(vocabTotal != null) d.vocab = {total:vocabTotal, approved:vocabOk ?? 0};
+  d.extra.users = users; d.extra.matchScores = scores; d.extra.cvs = cvs; d.extra.benchmarks = bench;
+  d.extra.nearDupPairs = nearRpc && Array.isArray(nearRpc.data) ? nearRpc.data.length : null;
+  d.extra.nearDupRows = nearRpc && Array.isArray(nearRpc.data) ? nearRpc.data.slice(0,6) : null;
+  d.hasRunsTable = !!runsProbe; d.runs = runsProbe && Array.isArray(runsProbe.data) ? runsProbe.data : [];
+  d.cronLive = !!(cronRpc && Array.isArray(cronRpc.data));
+  if(d.cronLive){
+    d.cron = d.cron.map(c => { const x = cronRpc.data.find(r => r.name === c.name || r.jobid === c.id); return x ? Object.assign({}, c, {active:x.active, lastRun:x.last_run || c.lastRun, runs24:x.runs_24h ?? c.runs24, failed24:x.failed_24h ?? c.failed24, schedule:x.schedule || c.schedule}) : c; });
+  }
+  d.live = true; d.asOf = new Date().toISOString();
+  return d;
+}
+
+function aggregateLive(jobs, raws, keys, alerts){
+  const d = clone(SNAP);
+  const today = new Date().toISOString().slice(0,10);
+  const T_ = {jobs:jobs.length, active:0, done:0, failed:0, pending:0, processing:0, skipped:0, atCap:0, enrichedActive:0, noDeadlineActive:0, expiredActive:0, dupsActive:0, stuck:0, newToday:0, other:0};
+  const bySrc = {}; SRC.forEach(s => bySrc[s.id] = {...Z});
+  const errs = {}; const fill = {active:0,deadline:0,salary:0,industry:0,job_function:0,skills_t1:0,min_degree:0,experience:0,job_type:0,ai_summary:0,languages:0,local_company:0,company_description:0,company_logo:0,contact_emails:0,apply_contact:0};
+  const ind = {}, fnc = {}, dl = {source_field:0, ai:0, none:0};
+  const trendMap = {};
+  for(const r of jobs){
+    const sid = srcOfUrl(r.job_url), s = bySrc[sid] || (bySrc[sid] = {...Z});
+    const st = r.extraction_status;
+    s.total++; if(st in s) s[st]++;
+    if(st === 'done') T_.done++; else if(st === 'failed') T_.failed++; else if(st === 'pending') T_.pending++; else if(st === 'processing') T_.processing++; else if(st === 'skipped') T_.skipped++;
+    if(sid === 'other') T_.other++;
+    const capped = st === 'failed' && (r.extraction_attempts || 0) >= 3;
+    if(capped){ T_.atCap++; s.atCap++; }
+    if(r.duplicate_of_job_id) s.dups++;
+    if(r.deadline && r.deadline < today) s.expired++;
+    if(r.scraped_at && (!s.lastScraped || r.scraped_at > s.lastScraped)) s.lastScraped = r.scraped_at;
+    if(r.scraped_at && r.scraped_at.slice(0,10) === today){ s.newToday++; T_.newToday++; }
+    if(st === 'processing' && r.processing_started_at && Date.now() - T(r.processing_started_at) > 300000) T_.stuck++;
+    if(st === 'failed'){ const c = errClass(r.extraction_error); errs[c] = (errs[c] || 0) + 1; }
+    if(r.scraped_at){ const k = r.scraped_at.slice(0,10); trendMap[k] = (trendMap[k] || 0) + 1; }
+    if(r.is_active){
+      T_.active++; s.active++; fill.active++;
+      if(r.industry){ T_.enrichedActive++; s.enriched++; }
+      if(!r.deadline){ T_.noDeadlineActive++; s.noDeadlineActive++; } else fill.deadline++;
+      if(r.deadline && r.deadline < today) T_.expiredActive++;
+      if(r.duplicate_of_job_id) T_.dupsActive++;
+      if(st === 'failed') s.failedActive++;
+      if(r.salary_min != null) fill.salary++;
+      if(r.industry){ fill.industry++; ind[r.industry] = (ind[r.industry] || 0) + 1; }
+      if(r.job_function){ fill.job_function++; fnc[r.job_function] = (fnc[r.job_function] || 0) + 1; }
+      if(r.skills_t1 && r.skills_t1.length) fill.skills_t1++;
+      if(r.min_degree) fill.min_degree++;
+      if(r.experience_level_new) fill.experience++;
+      if(r.job_type_new) fill.job_type++;
+      if(r.ai_summary) fill.ai_summary++;
+      if(r.languages_required && r.languages_required.length) fill.languages++;
+      if(r.is_local_company != null) fill.local_company++;
+      if(r.company_description) fill.company_description++;
+      if(r.company_logo_url) fill.company_logo++;
+      if(r.contact_emails && r.contact_emails.length) fill.contact_emails++;
+      if(r.apply_contact) fill.apply_contact++;
+      if(r.deadline_source === 'source_field') dl.source_field++; else if(r.deadline_source === 'ai') dl.ai++; else dl.none++;
+    }
+  }
+  d.T = T_; d.fill = fill; d.dl = dl;
+  for(const s of SRC){ d.src[s.id].jobs = bySrc[s.id] || {...Z}; }
+  // raw / staging tables
+  let stagedTenders = 0;
+  for(const id of Object.keys(STG)){
+    const rows = raws[id] || [], raw = {total:rows.length,pending:0,failed:0,done:0,skipped:0,promoted:0,tender:0,lastSeen:null};
+    for(const r of rows){
+      const st = r.extraction_status || '';
+      if(st === 'pending') raw.pending++; else if(st === 'failed') raw.failed++; else if(st === 'done') raw.done++; else if(st.startsWith('skipped')) raw.skipped++;
+      if(r.promoted_job_id) raw.promoted++;
+      if(r.content_type === 'tender' || r.content_type === 'paid_program'){ raw.tender++; if(id === 'brightermonday' && (st === 'pending' || st === 'failed')) stagedTenders++; }
+      const seen = r.last_seen_at || r.scraped_at; if(seen && (!raw.lastSeen || seen > raw.lastSeen)) raw.lastSeen = seen;
+      if(st === 'failed'){ const c = errClass(r.extraction_error); errs[c] = (errs[c] || 0) + 1; }
+      if(id === 'jobwebrwanda'){ if(r.deadline && (!raw.newestDeadline || r.deadline > raw.newestDeadline)) raw.newestDeadline = r.deadline; if(r.deadline && r.deadline < today) raw.past = (raw.past || 0) + 1; }
+    }
+    d.src[id].raw = raw;
+  }
+  d.errors = Object.keys(errs).sort((a,b)=>errs[b]-errs[a]).map(c => ({...ERR_META[c], count:errs[c]}));
+  d.extra.stagedTenders = stagedTenders;
+  d.dist = {industry:Object.entries(ind).sort((a,b)=>b[1]-a[1]), fn:Object.entries(fnc).sort((a,b)=>b[1]-a[1]).slice(0,8)};
+  // 7-day trend
+  d.trend = [];
+  for(let i = 6; i >= 0; i--){
+    const dt = new Date(Date.now() - i*86400000), k = dt.toISOString().slice(0,10);
+    d.trend.push({day: i === 0 ? 'Today' : dt.toUTCString().slice(0,11).replace(',','').replace(/ (\w{3})$/,''), count: trendMap[k] || 0, today: i === 0});
+  }
+  d.keys = keys;
+  d.alerts = alerts.map(a => ({id:a.id, created_at:a.created_at, severity:a.severity, code:a.code, message:a.message, detail:(a.metrics && a.metrics.detail) || ''}));
+  return d;
+}
+// =====================================================================
+//  RENDER
+// =====================================================================
+const tag = (cls, txt) => `<span class="tag ${cls}">${esc(txt)}</span>`;
+function statusTag(st){
+  st = String(st || '');
+  const skipped = st.startsWith('skipped');
+  const cls = skipped ? 'skipped' : st;
+  const lbl = skipped ? 'Skipped' + (st.includes('_') ? ' · ' + st.split('_')[1] : '')
+    : ({done:'Extracted', failed:'Failed', pending:'Pending', processing:'Processing', unprocessed:'No pipeline'}[st] || pretty(st));
+  return `<span class="status-tag ${cls}">${esc(lbl)}</span>`;
+}
+function barRow(label, n, total, cls, sub){
+  return `<div class="bar-row"><div class="bar-top"><span class="l">${esc(label)}</span><span class="n">${nf(n)}${total != null ? ' / '+nf(total)+' · '+pc(n,total)+'%' : ''}</span></div><div class="bar ${cls||''}"><i style="width:${total ? Math.min(100, n/total*100) : 0}%"></i></div>${sub ? `<div class="muted" style="font-size:11px;margin-top:4px">${sub}</div>` : ''}</div>`;
+}
+const isBlocked = k => (k.rpm_blocked_until && T(k.rpm_blocked_until) > REF()) || (k.rpd_blocked_until && T(k.rpd_blocked_until) > REF());
+const usedToday = k => (k.day_window_start && String(k.day_window_start).slice(0,10) === todayStr()) ? (k.requests_today || 0) : 0;
+
+function capacity(){
+  const g = D.keys.filter(k => k.active && k.status === 'active');
+  const rpd = g.reduce((a,k)=>a+(k.rpd_limit||200),0), used = g.reduce((a,k)=>a+usedToday(k),0), rpm = g.reduce((a,k)=>a+(k.rpm_limit||15),0);
+  const awaiting = D.T.pending + D.T.processing + D.T.failed + Object.values(D.src).reduce((a,s)=>a+s.raw.pending+s.raw.failed,0);
+  return {g, rpd, used, rpm, awaiting, days: rpd ? awaiting/rpd : null, usable: g.filter(k=>!isBlocked(k)).length};
+}
+function lastScrape(id){ const s = D.src[id]; return s.raw.lastSeen || s.jobs.lastScraped; }
+function srcHealth(id){
+  const def = SRC_BY[id], s = D.src[id], j = s.jobs;
+  if(def.noPipeline) return {lvl:'bad', label:'No pipeline'};
+  const done = j.done + j.failed, err = done ? j.failed/done : 0, last = lastScrape(id), h = last ? hoursSince(last) : null;
+  if(err > .5) return {lvl:'bad', label:'Extraction failing'};
+  if(h !== null && h > 24) return {lvl:'warn', label:'Stale'};
+  if(err > .1) return {lvl:'warn', label:'Errors'};
+  return {lvl:'ok', label:'Healthy'};
+}
+const lvlDot = l => l === 'ok' ? 'ok' : l === 'warn' ? 'warn' : 'bad';
+
+// ---------------- Issues (needs attention) ----------------
+function computeIssues(){
+  const I = [], T_ = D.T, cap = capacity(), ex = D.extra;
+  const f429 = (D.errors.find(e => e.reason.startsWith('Gemini 429')) || {count:0}).count;
+  const alerts24 = D.alerts.filter(a => hoursSince(a.created_at) <= 24).length;
+  if(f429 > 0) I.push({sev:'crit', t:`${nf(f429)} extractions failed on Gemini 429 errors`,
+    d:`Successful AI calls today: ${cap.used} of ${nf(cap.rpd)} configured${alerts24 ? `; ${alerts24} “key pool exhausted” alerts fired in the last 24 h` : ''}. Your own counters show the daily quota barely touched, so the keys’ real Google-side quota is probably lower than the configured 15 RPM / 200 RPD, or they are shared with another project. Check them in AI Studio.`, act:['Open AI keys','keys']});
+  if(T_.atCap > 0) I.push({sev:'crit', t:`${nf(T_.atCap)} failed jobs are stuck at the 3-attempt cap`,
+    d:'retry-failed-jobs-drip skips rows with 3+ attempts, so these will never retry on their own. Once the keys work, reset the counter (transient errors only) and they drain at 5 rows / 2 min.', act:['Review & reset','queue']});
+  const unen = T_.active - T_.enrichedActive, bm = D.src.brightermonday.jobs;
+  if(unen > 0) I.push({sev: unen/Math.max(1,T_.active) > .25 ? 'crit' : 'warn', t:`${nf(unen)} of ${nf(T_.active)} live jobs have no AI enrichment`,
+    d:`They are visible on Kazio but have no industry, function or skills, so matching can’t use them.${bm.active - bm.enriched > 0 ? ` ${nf(bm.active - bm.enriched)} of them are BrighterMonday.` : ''}`, act:['Show them','jobs:unenriched']});
+  if(ex.stagedTenders > 0) I.push({sev:'warn', t:`${nf(ex.stagedTenders)} BrighterMonday staging rows are already labelled tender / paid programme`,
+    d:'ai-job-extractor picks rows by status only, so it still spends AI calls on them, and the staging-retry cron keeps requeueing the failed ones. Mark them skipped.', act:['Skip them','skipTenders']});
+  const jw = D.src.jobwebrwanda.raw;
+  if(jw.total > 0) I.push({sev:'warn', t:`JobWeb Rwanda has no pipeline: ${nf(jw.total)} rows staged, 0 in jobs`,
+    d:`No extraction_status column and ai-job-extractor doesn’t handle it. Newest deadline in the table is ${jw.newestDeadline || '—'}, so the scraper also looks stopped.`, act:['Open source','src:jobwebrwanda']});
+  const jr = D.src.jobinrwanda.raw;
+  if(jr.pending > 0) I.push({sev:'warn', t:`${nf(jr.pending)} Job in Rwanda rows sit in staging and nothing reads them`,
+    d:'raw_jobinrwanda_jobs is a newer staging table; ai-job-extractor doesn’t support the source and the old direct writer bypasses it. Decide which path is canonical.', act:['Open source','src:jobinrwanda']});
+  const stale = SRC.filter(s => !s.noPipeline).map(s => ({s, h: hoursSince(lastScrape(s.id))})).filter(x => x.h > 24);
+  if(stale.length) I.push({sev:'warn', t:`${stale.length} source${stale.length>1?'s':''} not scraped for over 24 h`,
+    d:stale.map(x => `${x.s.name} ${Math.round(x.h)} h`).join(' · ') + '. Based on the newest last_seen_at in each staging table.', act:['Open sources','sources']});
+  if(ex.nearDupPairs) I.push({sev:'warn', t:`${ex.nearDupPairs} near-duplicate pairs among live jobs`,
+    d:`Same company, similar title, different wording. ${ex.nearDupExample || ''} The nightly flag_duplicate_jobs only matches exact title|company.`, act:['See data quality','quality']});
+  if(T_.noDeadlineActive > 0) I.push({sev:'info', t:`${nf(T_.noDeadlineActive)} live jobs have no deadline`, d:'They can only expire through the 60-day stale sweeper.', act:['Show them','jobs:nodeadline']});
+  if(T_.stuck > 0) I.push({sev:'warn', t:`${T_.stuck} rows stuck in “processing” for over 5 min`, d:'retry_failed_jobs recovers these on its next tick.', act:['Open queue','queue']});
+  if(T_.expiredActive > 0) I.push({sev:'warn', t:`${T_.expiredActive} live jobs are past their deadline`, d:'deactivate-expired-jobs runs at 02:15 UTC; you can run it now.', act:['Open automation','automation']});
+  if(ex.rlsOff && ex.rlsOff.length) I.push({sev:'crit', t:`Row-level security is off on ${ex.rlsOff.join(', ')}`, d:'Anyone holding the public anon key can read or modify every row in that table. Supabase flags this as critical. Fix: ALTER TABLE public.raw_jobinrwanda_jobs ENABLE ROW LEVEL SECURITY; (service role keeps access).', act:['Open automation','automation']});
+  if(!D.hasRunsTable) I.push({sev:'info', t:'There is no scrape-run log', d:'Scrapers run outside Supabase and record nothing, so run history, duration and per-run counts can’t be shown. kazio-admin-helpers.sql adds a scrape_runs table for the scrapers/n8n to write to.', act:['See automation','automation']});
+  I.push({sev:'info', t:'15 legacy or test edge functions are still deployed', d:'ESCO-era extractors and embedders, plus deploy-test; 5 have JWT verification off. process-job’s shared bearer is a literal string repeated in three places, while backfill_process_jobs already reads a vault secret.', act:['Review','automation']});
+  const ord = {crit:0, warn:1, info:2};
+  return I.sort((a,b) => ord[a.sev] - ord[b.sev]);
+}
+let attnExpanded = false;
+function renderAttention(){
+  const I = computeIssues(), shown = attnExpanded ? I : I.slice(0,5);
+  const crit = I.filter(i => i.sev === 'crit').length, warn = I.filter(i => i.sev === 'warn').length;
+  $('attnCard').innerHTML = `<div class="attn-head"><div class="t">Needs attention <span class="tag red">${crit} critical</span><span class="tag amber">${warn} warnings</span><span class="tag blue">${I.length - crit - warn} notes</span></div>${I.length > 5 ? `<button class="btn btn-ghost btn-sm" id="attnToggle">${attnExpanded ? 'Show fewer' : 'Show all '+I.length}</button>` : ''}</div>` +
+    shown.map(i => `<div class="attn-item"><span class="sev ${i.sev}"></span><div class="body"><div class="t">${esc(i.t)}</div><div class="d">${esc(i.d)}</div></div><button class="btn btn-ghost btn-sm" data-issue="${esc(i.act[1])}">${esc(i.act[0])}</button></div>`).join('');
+}
+
+// ---------------- Overview ----------------
+function renderOverview(){
+  const T_ = D.T, cap = capacity();
+  $('ovDesc').textContent = (D.live ? 'Live data' : 'Snapshot') + ' · ' + stamp(D.asOf) + ' · what is in the job database, what is stuck, and what to do about it.';
+  $('modeBanner').innerHTML = D.live ? '' : `<div class="banner info"><span><b>Snapshot mode.</b> Numbers are real values read from your database on ${stamp(SNAP.asOf)}. Buttons log what they <em>would</em> do. <a id="bannerConnect">Connect to the live database</a> to refresh data and run actions.</span></div>`;
+  renderAttention();
+  $('heroJobs').innerHTML = `<div class="label">Jobs in database</div><div class="hero-number-row"><span class="hero-number">${nf(T_.jobs)}</span><span class="hero-number-unit">total · <b>${nf(T_.active)}</b> live · <b>${nf(T_.enrichedActive)}</b> matchable (${pc(T_.enrichedActive, T_.active)}%)</span></div>
+    <div class="hero-split">
+      <div class="split-item"><span class="dot ok"></span><b>${nf(T_.done)}</b>extracted</div>
+      <div class="split-item"><span class="dot warn"></span><b>${nf(T_.pending + T_.processing)}</b>pending</div>
+      <div class="split-item"><span class="dot bad"></span><b>${nf(T_.failed)}</b>failed</div>
+      <div class="split-item"><span class="dot" style="background:var(--text-tertiary)"></span><b>${nf(T_.skipped)}</b>skipped</div>
+    </div>`;
+  const hs = SRC.map(s => srcHealth(s.id)), okN = hs.filter(h => h.lvl === 'ok').length, a24 = D.alerts.filter(a => hoursSince(a.created_at) <= 24).length;
+  $('ovStats').innerHTML = [
+    ['New jobs today', nf(T_.newToday), '', 'rows added to jobs since 00:00 UTC'],
+    ['Awaiting AI', nf(cap.awaiting), cap.awaiting > cap.rpd ? 'amber' : '', cap.days != null ? `≈ ${cap.days.toFixed(1)} days at ${nf(cap.rpd)} calls/day (rows may overlap across paths)` : ''],
+    ['AI calls today', `${cap.used} / ${nf(cap.rpd)}`, '', `${cap.usable} of ${cap.g.length} Gemini keys usable now`],
+    ['Skipped by gates', nf(D.src.greatrwandajobs.raw.skipped + T_.skipped + Object.values(D.src).reduce((a,s)=>a+s.jobs.dups,0)), '', 'expired, tender, duplicate — no AI spent'],
+    ['Sources healthy', `${okN} / ${SRC.length}`, okN === SRC.length ? 'green' : okN === 0 ? 'red' : 'amber', 'fresh, and extracting cleanly'],
+    ['Critical alerts (24 h)', nf(a24), a24 ? 'red' : 'green', `${nf(D.alerts.length)} in total`],
+  ].map(([l,v,c,sub]) => `<div class="card stat-card"><div class="label">${l}</div><div class="value ${c}">${v}</div><div class="sub">${sub}</div></div>`).join('');
+  $('sourceStrip').innerHTML = SRC.map(s => {
+    const x = D.src[s.id], h = srcHealth(s.id);
+    return `<div class="card source-pill" data-goto="${s.id}"><div class="source-pill-top"><span class="source-name">${esc(s.name)}</span><span class="dot ${lvlDot(h.lvl)}"></span></div>
+      <div class="source-count mono">${nf(x.jobs.total)} in jobs · ${nf(x.raw.total)} staged</div>
+      <div class="path">${esc(s.path)}</div>
+      <div class="mini-track"><div class="mini-fill ${x.jobs.active && x.jobs.enriched === x.jobs.active ? 'done' : 'active'}" style="width:${pc(x.jobs.enriched, x.jobs.active)}%"></div></div>
+      <div class="source-count">${x.jobs.enriched}/${x.jobs.active} live jobs enriched · ${esc(h.label)}</div></div>`;
+  }).join('');
+  $('capacityMini').innerHTML = `<h3>AI capacity</h3><p class="hint">Configured limits of active Gemini keys vs today’s successful calls.</p>${barRow('Calls today', cap.used, cap.rpd, cap.used / Math.max(1,cap.rpd) > .8 ? 'red' : 'green')}
+    <div class="muted" style="font-size:11.5px">${cap.g.length} active Gemini keys · ${cap.rpm} RPM combined · ${cap.usable} usable right now</div>`;
+  drawChart('chartHost1');
+}
+
+// ---------------- Sources ----------------
+function initSources(){
+  $('sourceTabs').innerHTML = SRC.map((s,i) => `<div class="tab ${i===0?'active':''}" data-tab="${s.id}"><span>${esc(s.name)}</span><span class="tab-live-dot" id="tablive-${s.id}"></span></div>`).join('');
+  $('sourcePanels').innerHTML = SRC.map((s,i) => `<div class="source-panel ${i===0?'active':''}" id="panel-${s.id}">
+      <div id="sphead-${s.id}"></div>
+      <div class="table-toolbar"><div class="btn-row">
+        <div class="seg" data-seg="${s.id}"><button data-scope="jobs" class="active">In jobs table</button><button data-scope="staging">Staging</button></div>
+        <div class="table-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input type="text" placeholder="Filter by title or company…" data-qsrc="${s.id}"></div>
+        <select class="sel" data-stsrc="${s.id}"><option value="all">Any status</option><option value="done">Done</option><option value="failed">Failed</option><option value="pending">Pending</option><option value="processing">Processing</option><option value="skipped">Skipped</option></select>
+      </div><div class="muted" style="font-size:11.5px" id="tcount-${s.id}"></div></div>
+      <div class="card table-card" id="tbl-${s.id}">${tableShell('src-'+s.id, {})}</div></div>`).join('');
+  SRC.forEach(s => { S.tblSpec['src-'+s.id] = {prefix:'src-'+s.id, scope:'jobs', source:s.id, q:'', status:'all', flag:'', page:0, size:20, sort:null, rows:[], total:0}; });
+  S.tblSpec.jobs = {prefix:'jobs', scope:'jobs', source:'all', q:'', status:'all', flag:'', page:0, size:25, sort:null, rows:[], total:0};
+  $('jobsSource').innerHTML += SRC.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') + '<option value="other">Manual / test</option>';
+  $('jobsTableHost').innerHTML = tableShell('jobs', {showSrc:true});
+}
+function renderSourceHead(id){
+  const def = SRC_BY[id], s = D.src[id], j = s.jobs, r = s.raw, h = srcHealth(id);
+  const last = lastScrape(id), hook = S.hooks[id];
+  const banners = [];
+  if(def.noPipeline) banners.push(`<div class="banner crit"><span><b>Not connected to the pipeline.</b> ${nf(r.total)} rows are staged but none can be extracted or promoted.</span></div>`);
+  else if(!def.extractor && r.pending > 0) banners.push(`<div class="banner warn"><span><b>${nf(r.pending)} staged rows will never be extracted:</b> ai-job-extractor doesn’t handle this source.</span></div>`);
+  if(id === 'brightermonday' && D.extra.stagedTenders) banners.push(`<div class="banner warn"><span><b>${D.extra.stagedTenders} staging rows</b> are already tender / paid_program yet still pending or failed. <a data-issue="skipTenders">Mark them skipped</a></span></div>`);
+  const met = [
+    ['In staging', nf(r.total), '', def.hasStaging ? esc(def.stageName) : ''],
+    ['In jobs', nf(j.total), '', ''],
+    ['Live', nf(j.active), '', 'is_active = true'],
+    ['Enriched', nf(j.enriched), j.active && j.enriched < j.active ? 'amber' : 'green', `of ${nf(j.active)} live`],
+    ['Pending', nf(j.pending + j.processing), '', `staging: ${nf(r.pending)}`],
+    ['Failed', nf(j.failed), j.failed ? 'red' : '', `staging: ${nf(r.failed)}`],
+    ['At retry cap', nf(j.atCap), j.atCap ? 'red' : '', '3+ attempts'],
+    ['Skipped', nf(j.skipped + r.skipped), '', 'expired / tender'],
+    ['Duplicates', nf(j.dups), '', 'flagged, inactive'],
+    ['Past deadline', nf(j.expired), '', 'in jobs'],
+  ];
+  $('sphead-'+id).innerHTML = `
+    <div class="source-header"><div class="source-header-left"><div class="source-favicon">${def.letter}</div><div><h2>${esc(def.name)}</h2><div class="source-url">${esc(def.url)}</div></div></div>
+      <div class="btn-row">${tag(h.lvl === 'ok' ? 'green' : h.lvl === 'warn' ? 'amber' : 'red', h.label)}
+        <button class="btn btn-ghost btn-sm" data-scrape="${id}" title="${hook ? 'POST to your webhook' : 'No trigger URL set — add one in Settings'}">Scrape now</button>
+        ${def.extractor ? `<button class="btn btn-ghost btn-sm" data-extract="${id}">Extract pending (${nf(r.pending)})</button>` : ''}
+        <button class="btn btn-ghost btn-sm" data-retryfail="${id}">Requeue failed</button>
+        <a class="btn btn-ghost btn-sm" href="https://${esc(def.url)}" target="_blank" rel="noopener">Open site ↗</a></div></div>
+    ${banners.join('')}
+    <div class="card source-progress-card"><div class="gauge-top"><span class="label">${last ? 'Last scrape activity ' + ago(last) + ' (' + stamp(last) + ')' : 'No scrape timestamp available for this source'}</span><span class="gauge-pct">${pc(j.enriched, j.active)}%</span></div>
+      <div class="gauge-track"><div class="gauge-fill ${j.active && j.enriched === j.active ? 'complete' : ''}" style="width:${pc(j.enriched, j.active)}%"></div></div>
+      <div class="muted" style="font-size:11px;margin-top:6px">Share of live jobs that are AI-enriched · ${esc(def.path)}</div></div>
+    <div class="source-metrics">${met.map(m => `<div class="card metric"><div class="label">${m[0]}</div><div class="value ${m[2]}">${m[1]}</div><div class="sub">${m[3]}</div></div>`).join('')}</div>
+    <div class="card sourcebox"><div class="trend-title">What we know about this source</div><ul>${def.notes.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+}
+
+// ---------------- Table module ----------------
+function tableShell(prefix, o){
+  return `<div class="scroll-x"><table class="job-table"><thead><tr>
+    <th data-sort="title" data-p="${prefix}">Title<span class="arrow"></span></th>${o.showSrc ? '<th>Source</th>' : ''}
+    <th data-sort="deadline" data-p="${prefix}">Deadline<span class="arrow"></span></th>
+    <th data-sort="status" data-p="${prefix}">Status<span class="arrow"></span></th><th>Enrichment</th>
+    <th data-sort="scraped" data-p="${prefix}">Found<span class="arrow"></span></th></tr></thead><tbody id="${prefix}-body"></tbody></table></div>
+    <div class="table-footer"><span id="${prefix}-info"></span><div class="pager"><button data-pg="-1" data-p="${prefix}">‹ Prev</button><button data-pg="1" data-p="${prefix}">Next ›</button></div></div>`;
+}
+function normJob(r){
+  return {table:'jobs', id:r.id, idCol:'id', k:'jobs:'+r.id, src:srcOfUrl(r.job_url), title:r.title, company:r.company, location:r.location, deadline:r.deadline, status:r.extraction_status, active:r.is_active, ct:r.content_type, skip:r.skip_reason, error:r.extraction_error, att:r.extraction_attempts, industry:r.industry, fn:r.job_function, level:r.experience_level_new, type:r.job_type_new, deg:r.min_degree, smin:r.salary_min, smax:r.salary_max, dsrc:r.deadline_source, scraped:r.scraped_at, dup:!!r.duplicate_of_job_id, t1:(r.skills_t1||[]).length, url:r.job_url};
+}
+function snapRows(spec){
+  let rows = spec.scope === 'staging' ? (STAGING_SAMPLE[spec.source] || []).slice() : SAMPLE.filter(r => spec.source === 'all' || r.src === spec.source);
+  rows = rows.map((r,i) => Object.assign({table:spec.scope === 'staging' ? STG[spec.source].table : 'jobs', id:null, k:spec.prefix+':'+i, sample:true}, r));
+  const q = spec.q.toLowerCase(), td = todayStr();
+  rows = rows.filter(r => (!q || (r.title||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q))
+    && (spec.status === 'all' || (spec.status === 'skipped' ? String(r.status).startsWith('skipped') || (r.skip && r.status === 'skipped') : r.status === spec.status))
+    && (!spec.flag || ({active:r.active === true, unenriched:r.active && !r.industry, atcap:r.status === 'failed' && (r.att||0) >= 3, nodeadline:r.active && !r.deadline, expired:r.deadline && r.deadline < td, dup:r.dup})[spec.flag]));
+  const key = spec.sort ? spec.sort.key : 'scraped', dir = spec.sort ? spec.sort.dir : -1;
+  rows.sort((a,b) => { const x = String(a[key] ?? ''), y = String(b[key] ?? ''); return x < y ? -dir : x > y ? dir : 0; });
+  return {rows:rows.slice(spec.page*spec.size, (spec.page+1)*spec.size), total:rows.length, sample:true};
+}
+async function liveRows(spec){
+  const p = new URLSearchParams(), off = spec.page * spec.size;
+  const qs = spec.q.replace(/[,()*%\\]/g,' ').trim();
+  let table, map;
+  if(spec.scope === 'staging'){
+    const c = STG[spec.source]; table = c.table; p.set('select', c.sel); p.set('order', c.order);
+    if(qs) p.set('or', '(' + c.q.map(col => `${col}.ilike.*${qs}*`).join(',') + ')');
+    if(spec.status !== 'all' && spec.source !== 'jobwebrwanda') p.set('extraction_status', spec.status === 'skipped' ? 'like.skipped*' : 'eq.'+spec.status);
+    map = r => Object.assign({table, idCol:c.key, k:spec.prefix+':'+r[c.key], src:spec.source, staging:true}, c.map(r));
+  } else {
+    table = 'jobs'; p.set('select', JOBS_SEL);
+    const sk = {title:'title', deadline:'deadline', status:'extraction_status', scraped:'scraped_at'}[spec.sort && spec.sort.key] || 'scraped_at';
+    p.set('order', sk + '.' + ((spec.sort ? spec.sort.dir : -1) === 1 ? 'asc' : 'desc') + '.nullslast');
+    const and = [];
+    if(spec.source !== 'all'){ if(spec.source === 'other') and.push('and(job_url.not.ilike.*brightermonday*,job_url.not.ilike.*ndangira*,job_url.not.ilike.*greatrwandajobs*,job_url.not.ilike.*jobinrwanda*,job_url.not.ilike.*jobwebrwanda*)'); else p.set('job_url', 'ilike.*'+SRC_BY[spec.source].match+'*'); }
+    if(spec.status !== 'all') p.set('extraction_status', 'eq.'+spec.status);
+    if(qs) and.push(`or(title.ilike.*${qs}*,company.ilike.*${qs}*)`);
+    const F = {active:['is_active','eq.true'], unenriched:null, atcap:null, nodeadline:null, expired:['deadline','lt.'+todayStr()], dup:['duplicate_of_job_id','not.is.null']};
+    if(spec.flag === 'active') p.set('is_active','eq.true');
+    if(spec.flag === 'unenriched'){ p.set('is_active','eq.true'); p.set('industry','is.null'); }
+    if(spec.flag === 'atcap'){ p.set('extraction_status','eq.failed'); p.set('extraction_attempts','gte.3'); }
+    if(spec.flag === 'nodeadline'){ p.set('is_active','eq.true'); p.set('deadline','is.null'); }
+    if(spec.flag === 'expired') p.set('deadline','lt.'+todayStr());
+    if(spec.flag === 'dup') p.set('duplicate_of_job_id','not.is.null');
+    if(and.length) p.set('and', '(' + and.join(',') + ')');
+    map = normJob;
+  }
+  p.set('limit', spec.size); p.set('offset', off);
+  const r = await rest(table + '?' + p.toString(), {headers:{Prefer:'count=exact'}});
+  let rows = (r.data || []).map(map);
+  if(spec.scope === 'staging' && spec.sort){ const key = spec.sort.key, dir = spec.sort.dir; rows.sort((a,b) => { const x = String(a[key] ?? ''), y = String(b[key] ?? ''); return x < y ? -dir : x > y ? dir : 0; }); }
+  return {rows, total:r.count ?? rows.length, sample:false};
+}
+function enrichCell(r){
+  if(r.staging) return '<span class="muted">—</span>';
+  if(r.industry) return `<div>${tag('blue', pretty(r.industry))}</div><div class="job-meta">${esc(pretty(r.fn))}${r.t1 ? ' · '+r.t1+' skills' : ''}</div>`;
+  if(r.active) return tag('red', 'live · not enriched');
+  return '<span class="muted">—</span>';
+}
+function rowHTML(r, i, prefix, showSrc){
+  const sub = [r.company, r.location].filter(Boolean).map(esc).join(' · ');
+  const reason = r.skip ? `<div class="fail-reason-cell">${esc(pretty(r.skip))}</div>` : (r.error ? `<div class="fail-reason-cell">${esc(errShort(r.error))}</div>` : '');
+  const att = r.status === 'failed' && r.att != null ? ` <span class="muted mono" title="attempts">×${r.att}</span>` : '';
+  const flags = (r.table === 'jobs' && r.active === false ? tag('gray','inactive') + ' ' : '') + (r.dup ? tag('purple','duplicate') + ' ' : '') + (r.ct && r.ct !== 'job' ? tag('amber', r.ct) : '');
+  const passed = r.deadline && r.deadline < todayStr();
+  return `<tr class="clickable" data-row="${i}" data-p="${prefix}"><td><div class="job-title">${esc(trunc(r.title, 74))}</div><div class="job-meta">${sub}${flags ? ' ' + flags : ''}</div></td>
+    ${showSrc ? `<td>${esc((SRC_BY[r.src] || {name:'Manual / test'}).name)}</td>` : ''}
+    <td class="mono" style="color:var(--text-${passed ? 'tertiary' : 'secondary'})">${r.deadline ? shortDate(r.deadline) + (passed ? ' ✕' : '') : '—'}</td>
+    <td>${statusTag(r.status)}${att}${reason}</td><td>${enrichCell(r)}</td><td class="mono muted">${r.scraped ? ago(r.scraped) : '—'}</td></tr>`;
+}
+async function refreshTable(prefix){
+  const spec = S.tblSpec[prefix]; if(!spec) return;
+  const body = $(prefix+'-body'); if(!body) return;
+  const cols = prefix === 'jobs' ? 7 : 6;
+  body.innerHTML = `<tr><td colspan="${cols}" class="empty"><span class="spinner"></span> Loading…</td></tr>`;
+  let res;
+  try { res = S.mode === 'live' ? await liveRows(spec) : snapRows(spec); }
+  catch(e){ body.innerHTML = `<tr><td colspan="${cols}" class="empty" style="color:var(--red)">${esc(e.message)}</td></tr>`; return; }
+  spec.rows = res.rows; spec.total = res.total;
+  const showSrc = prefix === 'jobs';
+  body.innerHTML = res.rows.length ? res.rows.map((r,i) => rowHTML(r, i, prefix, showSrc)).join('') :
+    `<tr><td colspan="${cols}" class="empty">${S.mode !== 'live' && spec.scope === 'staging' && !(STAGING_SAMPLE[spec.source]) ? 'The snapshot holds counts only for this staging table. Connect to the live database to browse its rows.' : 'No rows match.'}</td></tr>`;
+  const pages = Math.max(1, Math.ceil(res.total / spec.size));
+  $(prefix+'-info').textContent = `${nf(res.total)} rows${res.sample ? ' in snapshot sample' : ''} · page ${spec.page+1} of ${pages}`;
+  document.querySelectorAll(`[data-pg][data-p="${prefix}"]`).forEach(b => { b.disabled = (+b.dataset.pg < 0 && spec.page === 0) || (+b.dataset.pg > 0 && spec.page + 1 >= pages); });
+  const cnt = prefix === 'jobs' ? $('jobsCount') : $('tcount-' + prefix.replace('src-',''));
+  if(cnt) cnt.textContent = `${nf(res.total)} ${spec.scope === 'staging' ? 'staging' : 'jobs'} rows`;
+  document.querySelectorAll(`th[data-p="${prefix}"] .arrow`).forEach(a => a.textContent = '');
+  if(spec.sort){ const th = document.querySelector(`th[data-p="${prefix}"][data-sort="${spec.sort.key}"] .arrow`); if(th) th.textContent = spec.sort.dir === 1 ? '▲' : '▼'; }
+}
+function renderJobsBanner(){
+  $('jobsBanner').innerHTML = D.live ? '' : `<div class="banner info"><span><b>Snapshot sample.</b> Showing ${SAMPLE.length} real rows out of ${nf(SNAP.T.jobs)}. Connect to query every row, use server-side filters and act on rows.</span></div>`;
+  $('navJobs').textContent = nf(D.T.jobs);
+}
+
+// ---------------- Drawer ----------------
+function safeLink(u){ return /^https?:\/\//i.test(u || '') ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(trunc(u, 60))} ↗</a>` : esc(u || '—'); }
+async function openDrawer(row){
+  S.drawerRow = row;
+  $('drawerTitle').textContent = row.title || '(untitled)';
+  $('drawerSub').innerHTML = statusTag(row.status) + (row.active === true ? tag('green','live') : row.active === false ? tag('gray','inactive') : '') + tag('gray', (SRC_BY[row.src] || {name:'Manual / test'}).name) + (row.staging ? tag('purple','staging row') : '');
+  const kv = (o) => '<dl class="kv">' + o.map(([k,v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('') + '</dl>';
+  const sal = row.smin != null ? `${nf(row.smin)} – ${nf(row.smax)} RWF / month` : '—';
+  let html = '<h4>Posting</h4>' + kv([['Company', esc(row.company || '—')], ['Location', esc(row.location || '—')], ['Deadline', row.deadline ? shortDate(row.deadline) + (row.dsrc ? ' ' + tag('gray', row.dsrc.replace('_',' ')) : '') : '—'], ['Content type', esc(row.ct || '—')], ['Source URL', safeLink(row.url)], ['Found', row.scraped ? stamp(row.scraped) + ' · ' + ago(row.scraped) : '—']]);
+  html += '<h4>Extraction</h4>' + kv([['Status', statusTag(row.status)], ['Attempts', row.att != null ? row.att : '—'], ['Skip reason', row.skip ? esc(pretty(row.skip)) : '—'], ['Promoted to jobs', row.promoted ? '<code>'+esc(String(row.promoted).slice(0,8))+'…</code>' : (row.staging ? 'no' : '—')]]);
+  if(row.error) html += `<div class="mono-block" style="margin-top:8px">${esc(row.error)}</div>`;
+  if(!row.staging) html += '<h4>Extracted fields</h4>' + kv([['Industry', esc(pretty(row.industry))], ['Job function', esc(pretty(row.fn))], ['Level', esc(pretty(row.level))], ['Type', esc(pretty(row.type))], ['Min degree', esc(pretty(row.deg))], ['Salary', sal + (row.smin != null ? ' ' + tag('gray','estimate if not stated') : '')], ['Tier-1 skills', row.t1 != null ? row.t1 + ' listed' : '—']]) + '<div id="drawerExtra"></div>';
+  $('drawerBody').innerHTML = html;
+  const jobsRow = row.table === 'jobs' && row.id, canAct = S.mode === 'live' && row.id;
+  $('drawerFoot').innerHTML = `<button class="btn btn-primary btn-sm" id="dfRequeue">Requeue extraction</button>` + (jobsRow ? `<button class="btn btn-ghost btn-sm" id="dfToggle">${row.active ? 'Deactivate' : 'Activate'}</button>` : '') + (row.id ? `<button class="btn btn-ghost btn-sm" id="dfCopy">Copy ID</button>` : '') + (S.mode !== 'live' ? '<span class="muted" style="font-size:11.5px;align-self:center">Snapshot rows are read-only</span>' : '');
+  $('drawer').classList.add('open'); $('drawerOverlay').classList.add('open'); $('drawer').setAttribute('aria-hidden','false');
+  if(S.mode === 'live' && row.table === 'jobs' && row.id){
+    try {
+      const {data} = await rest('jobs?id=eq.'+row.id+'&select=ai_summary,description,skills_t1,skills_t2,skills_t3,languages_required,contact_emails,apply_method,apply_contact,company_description,dedup_key,salary_is_estimated,published_on');
+      const j = data && data[0]; if(!j || S.drawerRow !== row || !$('drawerExtra')) return;
+      const pills = a => (a && a.length) ? '<div class="pillset">' + a.map(x => tag('gray', x)).join('') + '</div>' : '<span class="muted">—</span>';
+      $('drawerExtra').innerHTML = kv([['Skills · must', pills(j.skills_t1)], ['Skills · preferred', pills(j.skills_t2)], ['Skills · implied', pills(j.skills_t3)], ['Languages', pills(j.languages_required)], ['Salary estimated', j.salary_is_estimated ? 'yes' : 'no'], ['Apply', esc([j.apply_method, j.apply_contact].filter(Boolean).join(' · ') || '—')], ['Emails', pills(j.contact_emails)], ['Dedup key', '<code>'+esc(trunc(j.dedup_key, 60))+'</code>']]) +
+        (j.ai_summary ? '<h4>AI summary</h4><div class="mono-block" style="font-family:var(--sans);font-size:12.5px">'+esc(j.ai_summary)+'</div>' : '') +
+        (j.company_description ? '<h4>Company description</h4><div class="mono-block" style="font-family:var(--sans);font-size:12.5px">'+esc(j.company_description)+'</div>' : '') +
+        '<h4>Description (first 900 chars)</h4><div class="mono-block">'+esc((j.description || '').slice(0, 900))+'</div>';
+    } catch(e) { /* details are optional */ }
+  }
+}
+function closeDrawer(){ $('drawer').classList.remove('open'); $('drawerOverlay').classList.remove('open'); $('drawer').setAttribute('aria-hidden','true'); S.drawerRow = null; }
+
+// ---------------- Queue ----------------
+function queueRows(){
+  const T_ = D.T, s = D.src;
+  return [
+    {n:'jobs', t:'jobs', p:T_.pending, pr:T_.processing, f:T_.failed, cap:T_.atCap, d:T_.done, sk:T_.skipped, by:'process-job via retry-failed-jobs-drip (5 rows / 2 min, 3-attempt cap)'},
+    ...[['brightermonday','raw_brightermonday_jobs'],['ndangira','raw_ndangira_jobs'],['greatrwandajobs','jobs_greatrwandajobs']].map(([id,t]) => ({n:id, t, p:s[id].raw.pending, pr:null, f:s[id].raw.failed, cap:null, d:s[id].raw.done, sk:s[id].raw.skipped, by:'ai-job-extractor-drip (2 rows/source / 3 min) + retry-failed-staging-rows'})),
+    {n:'jobinrwanda', t:'raw_jobinrwanda_jobs', p:s.jobinrwanda.raw.pending, pr:null, f:0, cap:null, d:0, sk:0, by:'<span style="color:var(--red)">nothing</span>'},
+    {n:'jobwebrwanda', t:'jobs_jobwebrwanda', p:s.jobwebrwanda.raw.total, pr:null, f:0, cap:null, d:0, sk:0, by:'<span style="color:var(--red)">nothing (no status column)</span>'},
+  ];
+}
+function renderQueue(){
+  const T_ = D.T, cap = capacity(), rows = queueRows();
+  const stgP = rows.slice(1).reduce((a,r) => a + (r.n === 'jobwebrwanda' ? 0 : r.p), 0), stgF = rows.slice(1).reduce((a,r) => a + r.f, 0);
+  $('queueCards').innerHTML = [
+    ['Jobs pending', nf(T_.pending), '', 'waiting for process-job'], ['Processing', nf(T_.processing), '', T_.stuck ? T_.stuck + ' stuck > 5 min' : 'none stuck'],
+    ['Jobs failed', nf(T_.failed), T_.failed ? 'red' : '', `${nf(T_.atCap)} at retry cap`], ['Staging pending', nf(stgP), stgP ? 'amber' : '', 'awaiting ai-job-extractor'],
+    ['Staging failed', nf(stgF), stgF ? 'red' : '', 'requeued every 2 min if transient'], ['Skipped', nf(T_.skipped + rows.slice(1).reduce((a,r) => a + r.sk, 0)), '', 'gated before AI'],
+  ].map(([l,v,c,sub]) => `<div class="card stat-card"><div class="label">${l}</div><div class="value ${c}">${v}</div><div class="sub">${sub}</div></div>`).join('');
+  $('queueTable').innerHTML = `<table class="tbl"><thead><tr><th>Table</th><th class="num">Pending</th><th class="num">Processing</th><th class="num">Failed</th><th class="num">At cap</th><th class="num">Done</th><th class="num">Skipped</th><th>Drained by</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td><b>${esc(r.t)}</b></td><td class="num">${nf(r.p)}</td><td class="num">${r.pr == null ? '—' : nf(r.pr)}</td><td class="num" style="color:${r.f ? 'var(--red)' : 'inherit'}">${nf(r.f)}</td><td class="num">${r.cap == null ? '—' : nf(r.cap)}</td><td class="num">${nf(r.d)}</td><td class="num">${nf(r.sk)}</td><td class="sec" style="font-size:11.5px;min-width:200px">${r.by}</td></tr>`).join('') + '</tbody></table>';
+  const tot = D.errors.reduce((a,e) => a + e.count, 0);
+  $('queueReasons').innerHTML = D.errors.length ? D.errors.map(e => barRow(e.reason, e.count, tot, e.kind === 'pool' ? 'amber' : 'red', esc(e.note))).join('') : '<div class="empty">No failed rows.</div>';
+  $('queueActions').innerHTML = `
+    <h3>Run the extractor</h3><p class="hint">Calls ai-job-extractor for pending staging rows. It waits 12 s between rows, so keep the limit small.</p>
+    <div class="btn-row" style="margin-bottom:16px"><select class="sel" id="qxSource"><option value="">All three sources</option><option value="brightermonday">BrighterMonday</option><option value="ndangira">Ndangira</option><option value="greatrwandajobs">Great Rwanda Jobs</option></select>
+      <span class="muted">rows each</span><input class="num-input" id="qxLimit" value="2"><button class="btn btn-primary btn-sm" id="qxRun">Run</button></div>
+    <h3>Retry failed jobs</h3><p class="hint">Sends failed/pending jobs (transient errors, under 3 attempts) to process-job, 2.5 s apart.</p>
+    <div class="btn-row" style="margin-bottom:16px"><input class="num-input" id="qrLimit" value="5"><span class="muted">rows</span><button class="btn btn-ghost btn-sm" id="qrRun">Retry now</button></div>
+    <h3>Unstick rows that hit the cap</h3><p class="hint">Sets attempts back to 0 only on rows that failed with a transient error (429 / 503 / quota / rate / timeout), are still a job, not duplicates and not expired.</p>
+    <div class="btn-row" style="margin-bottom:16px"><button class="btn btn-ghost btn-sm" data-issue="resetCap">Reset jobs table (${nf(T_.atCap)} at cap)</button><button class="btn btn-ghost btn-sm" data-issue="resetCapStg">Reset staging tables</button></div>
+    <h3>Stop wasting AI calls</h3><p class="hint">Marks BrighterMonday staging rows already labelled tender / paid_program as <code>skipped_tender</code>.</p>
+    <button class="btn btn-ghost btn-sm" data-issue="skipTenders">Skip ${nf(D.extra.stagedTenders)} staged tenders</button>`;
+  $('queueCapacity').innerHTML = `${barRow('Successful calls today', cap.used, cap.rpd, cap.used / Math.max(1,cap.rpd) > .8 ? 'red' : 'green')}
+    <dl class="kv"><dt>Daily capacity</dt><dd>${nf(cap.rpd)} calls (${cap.g.length} Gemini keys × 200)</dd><dt>Awaiting AI</dt><dd>${nf(cap.awaiting)} rows <span class="muted">(upper bound: BrighterMonday can appear in both jobs and staging)</span></dd>
+    <dt>Time to clear</dt><dd>${cap.days != null ? '≈ ' + cap.days.toFixed(1) + ' days at full capacity' : '—'}</dd><dt>Drip pace</dt><dd>extractor ≤ 6 rows / 3 min · retry ≤ 5 rows / 2 min</dd></dl>
+    <div class="muted" style="font-size:11.5px;margin-top:10px">Raising throughput means more keys or a paid tier; code changes only avoid waste.</div>`;
+}
+
+// ---------------- Keys ----------------
+function keyState(k){
+  if(!k.active) return tag('gray', 'disabled'); if(k.status !== 'active') return tag('gray', k.status);
+  if(isBlocked(k)) return tag('amber', 'cooling down');
+  if(usedToday(k) >= k.rpd_limit) return tag('red', 'daily limit'); return tag('green', 'usable');
+}
+function renderKeys(){
+  const cap = capacity(), f429 = (D.errors.find(e => e.reason.startsWith('Gemini 429')) || {count:0}).count;
+  $('keysBanner').innerHTML = f429 ? `<div class="banner warn"><span><b>${cap.used} successful calls today, but ${nf(f429)} failed rows are 429s.</b> Counters say only ${pc(cap.used, cap.rpd)}% of the configured daily quota is used, so Google is throttling harder than these limits assume. Check each key’s real quota and project in AI Studio; adding keys from separate projects is the direct fix.</span></div>` : '';
+  $('keysStats').innerHTML = [['Active Gemini keys', cap.g.length, '', `${cap.usable} usable right now`], ['Configured capacity', nf(cap.rpd), '', 'calls / day'], ['Used today', nf(cap.used), '', 'successful calls (UTC day)'], ['OpenRouter fallback', D.keys.filter(k => k.provider === 'openrouter' && k.active).length, D.keys.filter(k => k.provider === 'openrouter' && k.active).length ? 'green' : 'amber', 'all fallback keys disabled'], ['Alerts (24 h)', D.alerts.filter(a => hoursSince(a.created_at) <= 24).length, '', 'pool exhausted']].map(([l,v,c,sub]) => `<div class="card stat-card"><div class="label">${l}</div><div class="value ${c}">${v}</div><div class="sub">${sub}</div></div>`).join('');
+  $('keysTable').innerHTML = `<table class="tbl"><thead><tr><th>Key</th><th>Provider</th><th>State</th><th style="min-width:170px">Used today</th><th>RPM limit</th><th>Last used</th><th class="num">Fails</th><th>Actions</th></tr></thead><tbody>` +
+    D.keys.map(k => { const u = usedToday(k), lim = k.rpd_limit >= 999999 ? null : k.rpd_limit; return `<tr><td class="mono"><b>#${k.id}</b></td><td>${esc(k.provider)}</td><td>${keyState(k)}${isBlocked(k) ? `<div class="muted" style="font-size:11px">until ${stamp(k.rpm_blocked_until || k.rpd_blocked_until)}</div>` : ''}</td>
+      <td>${lim ? barRow('', u, lim, u/lim > .8 ? 'red' : 'green') : `<span class="mono">${u}</span> <span class="muted">no daily cap</span>`}</td><td class="mono">${k.rpm_limit} <span class="muted" title="requests_this_minute is never written by the functions">(not enforced)</span></td>
+      <td class="muted">${k.last_used_at ? ago(k.last_used_at) : 'never'}</td><td class="num">${k.fail_count ?? 0}</td>
+      <td><div class="btn-row"><button class="btn btn-ghost btn-sm" data-key="${k.id}" data-kact="toggle">${k.active && k.status === 'active' ? 'Disable' : 'Enable'}</button>${isBlocked(k) ? `<button class="btn btn-ghost btn-sm" data-key="${k.id}" data-kact="unblock">Clear block</button>` : ''}<button class="btn btn-ghost btn-sm" data-key="${k.id}" data-kact="reset">Reset counter</button></div></td></tr>`; }).join('') + '</tbody></table>';
+}
+
+// ---------------- Automation ----------------
+function renderAutomation(){
+  $('autoBanner').innerHTML = (D.cronLive || D.live === false ? '' : '') + (D.live && !D.cronLive ? `<div class="banner info"><span>Live cron status and pause/resume need the helper functions in <code>kazio-admin-helpers.sql</code>. Until they exist this table shows the snapshot.</span></div>` : '') + (!D.live ? '<div class="banner info"><span>Snapshot values. Cron schedule and 24 h run counts were read from <code>cron.job</code> / <code>cron.job_run_details</code>.</span></div>' : '');
+  $('cronTable').innerHTML = `<table class="tbl"><thead><tr><th>Job</th><th>Schedule</th><th>What it does</th><th>Last run</th><th class="num">Runs 24 h</th><th class="num">Failed</th><th>Enabled</th><th></th></tr></thead><tbody>` +
+    D.cron.map(c => `<tr><td><b>${esc(c.name)}</b><div class="muted mono" style="font-size:10.5px">jobid ${c.id}</div></td><td><div>${esc(humanCron(c.schedule))}</div><div class="cron-sched">${esc(c.schedule)}</div></td><td class="sec" style="font-size:12px;min-width:260px">${esc(c.does)}</td><td class="muted">${ago(c.lastRun)}</td><td class="num">${nf(c.runs24)}</td><td class="num" style="color:${c.failed24 ? 'var(--red)' : 'inherit'}">${c.failed24}</td>
+      <td><span class="toggle ${c.active ? 'on' : ''} ${D.cronLive ? '' : 'off-locked'}" data-cron="${c.id}" data-on="${c.active ? 1 : 0}" title="${D.cronLive ? 'Pause / resume' : 'Needs the helper SQL to change'}"></span></td>
+      <td>${c.fn ? `<button class="btn btn-ghost btn-sm" data-runfn="${c.fn}">Run now</button>` : `<button class="btn btn-ghost btn-sm" data-runext="1">Run now</button>`}</td></tr>`).join('') + '</tbody></table>';
+  $('fnRunner').innerHTML = DBFN.map(f => `<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div class="btn-row" style="justify-content:space-between"><div><b style="font-size:12.5px">${esc(f.label)}</b><div class="muted" style="font-size:11.5px">${esc(f.d)}</div></div><div class="btn-row">${f.args.map(a => `<input class="num-input" data-fnarg="${f.fn}:${a}" value="${f.argDefaults[a]}" title="${a}">`).join('')}<button class="btn btn-ghost btn-sm" data-runfn="${f.fn}">Run</button></div></div></div>`).join('');
+  $('trigTable').innerHTML = `<table class="tbl"><tbody>` + TRIGGERS.map(t => `<tr><td><b>${esc(t[1])}</b><div class="muted" style="font-size:11px">${esc(t[0])} · ${esc(t[2])}</div><div class="sec" style="font-size:12px;margin-top:3px">${esc(t[3])}</div></td></tr>`).join('') + '</tbody></table>';
+  $('edgeTable').innerHTML = `<table class="tbl"><thead><tr><th>Function</th><th>Role</th><th>JWT</th></tr></thead><tbody>` + EDGE.map(e => `<tr><td><b>${esc(e.n)}</b> <span class="muted mono">v${e.v}</span><div class="muted" style="font-size:11.5px">${esc(e.d)}</div></td><td>${tag(e.role === 'live' ? 'green' : 'gray', e.role)}</td><td>${e.jwt ? tag('gray','verified') : tag('amber','off')}</td></tr>`).join('') + '</tbody></table>';
+}
+
+// ---------------- Data quality ----------------
+function renderQuality(){
+  const f = D.fill, a = f.active, T_ = D.T, ex = D.extra;
+  $('qualBanner').innerHTML = `<div class="banner ${T_.active - T_.enrichedActive > 0 ? 'warn' : 'info'}"><span><b>${nf(T_.enrichedActive)} of ${nf(a)} live jobs (${pc(T_.enrichedActive, a)}%) are fully enriched.</b> Everything below is measured on live jobs only (<code>is_active = true</code>).</span></div>`;
+  const rows = [['Deadline','deadline'],['Industry','industry'],['Job function','job_function'],['Experience level','experience'],['Job type','job_type'],['Min degree','min_degree'],['Skills (must-have)','skills_t1'],['Languages','languages'],['Local-company flag','local_company'],['AI summary','ai_summary'],['Salary (stated or estimated)','salary'],['Company description','company_description'],['Company logo','company_logo'],['Contact emails','contact_emails'],['Apply contact','apply_contact']];
+  $('qualFill').innerHTML = '<h3>Field completeness</h3><p class="hint">Share of live jobs with the field filled.</p>' + rows.map(([l,k]) => { const p = pc(f[k], a); return barRow(l, f[k], a, p >= 90 ? 'green' : p >= 50 ? 'amber' : 'red'); }).join('');
+  const finds = [
+    ex.nearDupPairs ? ['warn', `${ex.nearDupPairs} near-duplicate pairs among live jobs`, ex.nearDupExample || 'Same company, similar title.'] : null,
+    ['warn', 'Two extraction paths disagree', 'process-job always fills a salary (a benchmark range when not stated) and defaults min_degree to “none”; ai-job-extractor leaves salary null when unstated and defaults to “bachelor”. Salary and degree therefore mean different things depending on the path.'],
+    ['info', 'Salary benchmarks live in code', `The salary_benchmarks table has ${ex.benchmarks ?? 0} rows; the ranges used are hard-coded in process-job.`],
+    ['info', 'Raw HTML entities in titles', 'jobs_jobwebrwanda titles contain entities like &#8211;, and one Expertise France posting is stored with &amp; in its title. Nothing decodes them before the dedup key is built.'],
+    ['info', 'An Expression-of-Interest is typed as a job', 'World Vision’s “Expression of Interest for Local Partners…” is content_type = job and live. Consider an EOI keyword in the content-type gate.'],
+  ].filter(Boolean);
+  $('qualFindings').innerHTML = '<h3>Findings the automated gates miss</h3><p class="hint">Found by reading the data, not by a cron job.</p>' + finds.map(([s,t,d]) => `<div class="attn-item" style="padding:9px 0"><span class="sev ${s}"></span><div class="body"><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></div></div>`).join('');
+  const dl = D.dl, dt = dl.source_field + dl.ai + dl.none;
+  $('qualDeadline').innerHTML = '<h3>Where deadlines come from</h3><p class="hint">deadline_source on live jobs. AI dates are only used when the source gave none.</p>' + barRow('Source field', dl.source_field, dt, 'green') + barRow('AI-extracted', dl.ai, dt, 'amber') + barRow('No source recorded', dl.none, dt, 'red');
+  const dist = (arr, title) => `<h3>${title}</h3><p class="hint">Live enriched jobs.</p>` + (arr.length ? arr.map(([k,n]) => barRow(pretty(k), n, arr[0][1], '')).join('') : '<div class="empty">No data</div>');
+  $('qualIndustry').innerHTML = dist(D.dist.industry, 'By industry'); $('qualFunction').innerHTML = dist(D.dist.fn, 'By job function (top 8)');
+  const v = D.vocab;
+  $('vocabPanel').innerHTML = `<h3>Skill vocabulary</h3><p class="hint">The controlled list the extractor is told to prefer. Unapproved terms are not used in prompts.</p>${barRow('Approved terms', v.approved, v.total, 'green')}<div id="vocabList" style="margin-top:12px">${D.live ? '<span class="spinner"></span>' : '<div class="muted" style="font-size:12px">There is no review screen for the '+nf(v.total - v.approved)+' unapproved terms yet. Connect to the live database to review the most-used ones here.</div>'}</div>`;
+  const c = (l,v) => `<dt>${l}</dt><dd class="mono">${v ?? '—'}</dd>`;
+  $('downstreamPanel').innerHTML = `<h3>Downstream readiness</h3><p class="hint">Matching consumes what this pipeline produces.</p><dl class="kv">${c('Users', ex.users)}${c('Match scores', ex.matchScores)}${c('Generated CVs', ex.cvs)}${c('Salary benchmarks', ex.benchmarks)}</dl><div class="muted" style="font-size:12px;margin-top:10px">${!ex.users ? 'No users yet, so match scoring has not run. Enrichment gaps are cheaper to fix now than after launch.' : ''}</div>`;
+}
+async function loadVocabList(){
+  if(!D.live || !$('vocabList')) return;
+  try {
+    const {data} = await rest('skill_vocabulary?select=skill,canonical,usage_count&is_approved=eq.false&order=usage_count.desc&limit=12');
+    $('vocabList').innerHTML = '<div class="trend-title" style="margin-bottom:8px">Most-used unapproved terms</div>' + (data || []).map(t => `<div class="btn-row" style="justify-content:space-between;padding:4px 0"><span>${esc(t.canonical || t.skill)} <span class="muted mono">×${t.usage_count}</span></span><button class="btn btn-ghost btn-sm" data-vocab="${esc(t.skill)}">Approve</button></div>`).join('');
+  } catch(e) { $('vocabList').innerHTML = '<span class="muted">Could not load terms: ' + esc(e.message) + '</span>'; }
+}
+
+// ---------------- Alerts ----------------
+function renderAlerts(){
+  const al = D.alerts.slice().sort((a,b) => T(a.created_at) - T(b.created_at)), bursts = [];
+  for(const a of al){ const last = bursts[bursts.length-1]; if(last && T(a.created_at) - T(last.end) < 1800000){ last.end = a.created_at; last.n++; } else bursts.push({start:a.created_at, end:a.created_at, n:1, code:a.code, sev:a.severity}); }
+  const a24 = al.filter(a => hoursSince(a.created_at) <= 24).length;
+  $('alertsHost').innerHTML = `<div class="banner warn"><span><b>Nothing tells you when an alert is written.</b> They only appear here. Point an n8n workflow (or a Supabase database webhook on <code>ops_alert_events</code>) at WhatsApp or email so a pool-exhausted alert reaches you within a minute.</span></div>
+    <div class="stat-row">${[['Total alerts', nf(al.length), ''], ['Last 24 h', nf(a24), a24 ? 'red' : 'green'], ['Bursts', nf(bursts.length), ''], ['Latest', al.length ? ago(al[al.length-1].created_at) : '—', '']].map(([l,v,c]) => `<div class="card stat-card"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join('')}</div>
+    <div class="grid2"><div><div class="section-label" style="margin-top:0">Bursts <span class="sub">alerts less than 30 min apart</span></div><div class="card table-card"><table class="tbl"><tbody>${bursts.slice().reverse().map(b => `<tr><td><b>${nf(b.n)}× ${esc(b.code)}</b><div class="muted" style="font-size:11.5px">${stamp(b.start)}${b.start !== b.end ? ' → ' + stamp(b.end).slice(6) : ''}</div></td><td>${tag(b.sev === 'critical' ? 'red' : b.sev === 'warning' ? 'amber' : 'blue', b.sev)}</td></tr>`).join('') || '<tr><td class="empty">No alerts.</td></tr>'}</tbody></table></div></div>
+    <div><div class="section-label" style="margin-top:0">All events</div><div class="card table-card"><div class="scroll-x"><table class="tbl"><thead><tr><th>Time</th><th>Sev</th><th>Message</th></tr></thead><tbody>${al.slice().reverse().slice(0,60).map(a => `<tr><td class="mono muted" style="white-space:nowrap">${stamp(a.created_at)}</td><td>${tag(a.severity === 'critical' ? 'red' : a.severity === 'warning' ? 'amber' : 'blue', a.severity)}</td><td><div>${esc(a.message)}</div><div class="muted" style="font-size:11px">${esc(a.code)} · ${esc(trunc(a.detail, 80))}</div></td></tr>`).join('')}</tbody></table></div></div></div></div>`;
+}
+
+// ---------------- Stats ----------------
+function renderStats(){
+  const tot = D.errors.reduce((a,e) => a + e.count, 0), mx = Math.max(1, ...D.errors.map(e => e.count));
+  $('statsFailTotal').textContent = nf(tot);
+  $('reasonList').innerHTML = D.errors.length ? D.errors.map(r => `<div class="reason-row"><div class="reason-top"><span>${esc(r.reason)}</span><span class="count mono">${nf(r.count)}</span></div><div class="reason-track"><div class="reason-fill" style="width:${(r.count/mx*100).toFixed(0)}%"></div></div><div class="muted" style="font-size:11px;margin-top:4px">${esc(r.note)}</div></div>`).join('') : '<div class="empty">No failed rows.</div>';
+  $('healthBody').innerHTML = SRC.map(s => { const j = D.src[s.id].jobs, h = srcHealth(s.id), last = lastScrape(s.id), done = j.done + j.failed;
+    return `<tr><td><div class="health-name"><span class="dot ${lvlDot(h.lvl)}"></span>${esc(s.name)}</div></td><td class="mono" style="color:var(--text-secondary)">${last ? ago(last) : 'unknown'}</td><td class="mono" style="color:var(--text-secondary)">${nf(j.total)}</td><td class="mono" style="color:var(--text-secondary)">${done ? pc(j.failed, done) + '% (' + j.failed + ')' : '—'}</td><td><span class="health-status ${h.lvl === 'ok' ? 'ok' : 'warn'}">${esc(h.label)}</span></td></tr>`; }).join('');
+  drawChart('chartHost2');
+}
+
+// ---------------- Sidebar / chrome ----------------
+function renderChrome(){
+  const hs = SRC.map(s => srcHealth(s.id)), bad = hs.filter(h => h.lvl !== 'ok').length, a24 = D.alerts.filter(a => hoursSince(a.created_at) <= 24).length;
+  $('sidebarHealthDot').className = 'dot ' + (bad === 0 ? 'ok' : bad >= 3 ? 'bad' : 'warn');
+  $('sidebarHealthText').textContent = bad === 0 ? 'All sources healthy' : bad + ' of ' + SRC.length + ' sources need a look';
+  const q = $('navQueue'); q.style.display = D.T.failed ? '' : 'none'; q.textContent = nf(D.T.failed);
+  const st = $('navStats'); st.style.display = bad ? '' : 'none'; st.textContent = bad;
+  const al = $('navAlerts'); al.style.display = a24 ? '' : 'none'; al.textContent = a24; $('bellDot').style.display = a24 ? '' : 'none';
+  const cap = capacity(), k = $('navKeys'); k.style.display = cap.usable === 0 ? '' : 'none'; k.textContent = '0 usable';
+  $('connDot').className = 'dot ' + (D.live ? 'ok' : 'warn');
+  $('connPill').classList.toggle('live', !!D.live);
+  $('connText').innerHTML = D.live ? '<b>Live</b> · ' + esc(S.url.replace(/^https?:\/\//,'').slice(0,14)) + '…' : '<b>Snapshot</b> · click to connect';
+}
+
+// ---------------- Chart ----------------
+function drawChart(hostId){
+  const host = $(hostId); if(!host) return;
+  const tr = D.trend, w = 560, h = 150, padL = 28, padB = 22, padT = 8, max = Math.max(...tr.map(d => d.count), 5), bw = (w - padL - 10) / tr.length;
+  let g = '';
+  for(let i = 0; i <= 4; i++){ const y = padT + (h - padT - padB) * (1 - i/4); g += `<line x1="${padL}" x2="${w}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="1"/><text x="0" y="${y+3}" font-size="9.5" fill="var(--text-tertiary)">${Math.round(max*i/4)}</text>`; }
+  let bars = '';
+  tr.forEach((d,i) => { const bh = (h - padT - padB) * (d.count/max), x = padL + i*bw + bw*.18, bwid = bw*.64, y = h - padB - bh;
+    bars += `<rect x="${x}" y="${y}" width="${bwid}" height="${bh}" rx="3" fill="${d.today ? 'var(--accent)' : 'var(--accent-soft)'}"><title>${esc(d.day)}: ${d.count}</title></rect><text x="${x+bwid/2}" y="${h-6}" font-size="9.5" fill="var(--text-tertiary)" text-anchor="middle">${esc(d.day)}</text>${d.count ? `<text x="${x+bwid/2}" y="${y-3}" font-size="9.5" fill="var(--text-secondary)" text-anchor="middle">${d.count}</text>` : ''}`; });
+  host.innerHTML = `<svg class="barchart" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${g}${bars}</svg>`;
+}
+
+// ---------------- Activity log ----------------
+function logLine(level, html, when){
+  const body = $('termBody'), row = document.createElement('div');
+  row.className = 'term-line'; row.innerHTML = `<span class="term-time">${fmtTime(when || Date.now())}</span><span class="t-${level}">${esc(html)}</span>`;
+  body.appendChild(row); body.scrollTop = body.scrollHeight;
+  while(body.children.length > 120) body.removeChild(body.firstChild);
+}
+function seedLog(){
+  $('termBody').innerHTML = '';
+  const ev = [];
+  D.cron.forEach(c => ev.push([c.lastRun, c.failed24 ? 'warn' : 'ok', `cron ${c.name}: last run ok · ${nf(c.runs24)} runs / 24 h, ${c.failed24} failed`]));
+  const al = D.alerts.slice().sort((a,b) => T(a.created_at) - T(b.created_at)); let cur = null;
+  for(const a of al){ if(cur && T(a.created_at) - T(cur.end) < 1800000){ cur.end = a.created_at; cur.n++; } else { cur = {start:a.created_at, end:a.created_at, n:1, code:a.code}; ev.push(cur); } }
+  const evs = ev.map(e => Array.isArray(e) ? e : [e.end, 'err', `alert ×${e.n} ${e.code} — no usable AI key`]);
+  SRC.forEach(s => { const r = D.src[s.id].raw; if(r.lastSeen) evs.push([r.lastSeen, 'info', `${s.name}: latest staging write (${nf(r.total)} rows staged)`]); });
+  (D.runs || []).forEach(x => evs.push([x.started_at, x.status === 'failed' ? 'err' : 'ok', `${x.source}: scrape ${x.status}${x.inserted != null ? ' · ' + x.inserted + ' new' : ''}${x.found != null ? ' of ' + x.found + ' seen' : ''}${x.error ? ' — ' + String(x.error).slice(0,80) : ''}`]));
+  D.keys.filter(k => k.last_used_at && k.provider === 'gemini').forEach(k => evs.push([k.last_used_at, 'info', `gemini key #${k.id}: last successful call`]));
+  evs.filter(e => e[0]).sort((a,b) => T(a[0]) - T(b[0])).slice(-16).forEach(e => logLine(e[1], e[2], T(e[0])));
+}
+// =====================================================================
+//  ACTIONS + WIRING
+// =====================================================================
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._h); toast._h = setTimeout(() => t.classList.remove('show'), 3200); }
+function demo(label){ logLine('info', '[demo] would run: ' + label); toast('Demo mode — connect to the live database to run “' + label + '”'); }
+function confirmDo(title, body, yes, danger){
+  return new Promise(res => {
+    $('confirmTitle').textContent = title; $('confirmBody').innerHTML = body;
+    const y = $('confirmYes'), n = $('confirmNo'); y.textContent = yes || 'Run'; y.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+    $('confirmOverlay').classList.add('open');
+    const done = v => { $('confirmOverlay').classList.remove('open'); y.onclick = n.onclick = null; res(v); };
+    y.onclick = () => done(true); n.onclick = () => done(false);
+  });
+}
+function setGauge(state, label){
+  const chip = $('gaugeStatus'), fill = $('gaugeFill');
+  chip.className = 'status-chip ' + (state === 'running' ? 'running' : state === 'done' ? 'done' : 'idle');
+  chip.textContent = state === 'running' ? 'Running' : state === 'done' ? 'Done' : 'Idle';
+  fill.classList.toggle('indeterminate', state === 'running'); fill.classList.toggle('complete', state === 'done');
+  fill.style.width = state === 'done' ? '100%' : '0%';
+  $('gaugeNote').textContent = state === 'running' ? label : state === 'done' ? label : 'No operation running';
+  $('gaugePct').innerHTML = state === 'running' ? '<span class="spinner"></span>' : '';
+}
+async function runOp(label, fn){
+  if(S.busy){ toast('Another operation is still running'); return; }
+  S.busy = true; setGauge('running', label); logLine('info', 'start: ' + label);
+  try {
+    const out = await fn();
+    logLine('ok', label + ' — ' + (out || 'done')); toast(label + ': ' + (out || 'done')); setGauge('done', label + ' — ' + (out || 'done'));
+    await refreshLive(true);
+  } catch(e) { logLine('err', label + ' failed — ' + e.message); toast('Failed: ' + e.message); setGauge('idle'); }
+  finally { S.busy = false; }
+}
+async function refreshLive(silent){
+  if(S.mode !== 'live'){ if(!silent) toast('Snapshot mode — connect in Settings to load fresh data'); return; }
+  try { const d = await loadLive(); D = d; renderAll(); if(!silent) toast('Refreshed ' + stamp(d.asOf)); }
+  catch(e) { toast('Refresh failed: ' + e.message); logLine('err', 'refresh failed — ' + e.message); }
+}
+
+// ---------------- Extraction actions ----------------
+async function actExtract(source, limit){
+  limit = Math.max(1, Math.min(5, parseInt(limit) || 2));
+  const label = 'Extract ' + (source || 'all sources') + ' ×' + limit;
+  if(S.mode !== 'live') return demo(label);
+  const pend = source ? D.src[source].raw.pending : ['brightermonday','ndangira','greatrwandajobs'].reduce((a,id) => a + D.src[id].raw.pending, 0);
+  if(!await confirmDo('Run the extractor', `Sends up to <b>${limit}</b> pending row${limit>1?'s':''}${source ? '' : ' per source'} to Gemini through <code>ai-job-extractor</code>. It waits 12 s between rows, so this can take about ${Math.round(limit * (source ? 1 : 3) * 13)} s. ${nf(pend)} rows are pending.`)) return;
+  await runOp(label, async () => {
+    const res = await fetch(S.url.replace(/\/$/,'') + '/functions/v1/ai-job-extractor', {method:'POST', headers:{Authorization:'Bearer ' + S.key, apikey:S.key, 'Content-Type':'application/json'}, body:JSON.stringify(source ? {source, limit} : {limit})});
+    const j = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(j.error || 'HTTP ' + res.status);
+    const c = {}; (j.results || []).forEach(r => c[r.status] = (c[r.status] || 0) + 1);
+    return (j.processed || 0) + ' rows — ' + (Object.entries(c).map(([k,v]) => v + ' ' + k).join(', ') || 'nothing pending');
+  });
+}
+async function actRpc(fn, args, label){
+  label = label || fn;
+  if(S.mode !== 'live') return demo(label + (args && Object.keys(args).length ? ' ' + JSON.stringify(args) : ''));
+  if(!await confirmDo(label, `Calls <code>public.${esc(fn)}(${esc(Object.entries(args || {}).map(([k,v]) => k + ' := ' + v).join(', '))})</code> on the production database.`)) return;
+  await runOp(label, async () => { const r = await rest('rpc/' + fn, {method:'POST', body:args || {}}); return (typeof r.data === 'number' ? r.data + ' rows affected' : 'done'); });
+}
+const TRANSIENT = 'extraction_error.ilike.*429*,extraction_error.ilike.*503*,extraction_error.ilike.*quota*,extraction_error.ilike.*rate*,extraction_error.ilike.*limit*,extraction_error.ilike.*timeout*,extraction_error.ilike.*overload*';
+function capFilter(table, onlySrc){
+  const p = new URLSearchParams(); p.set('extraction_status', 'eq.failed'); p.set('extraction_attempts', 'gte.3');
+  if(table === 'jobs'){
+    p.set('and', `(or(${TRANSIENT}),or(deadline.is.null,deadline.gte.${todayStr()}),duplicate_of_job_id.is.null,content_type.eq.job)`);
+    if(onlySrc) p.set('job_url', 'ilike.*' + SRC_BY[onlySrc].match + '*');
+  } else p.set('or', `(${TRANSIENT})`);
+  return p.toString();
+}
+async function actResetCap(kind, onlySrc){
+  const tables = kind === 'jobs' ? ['jobs'] : (onlySrc ? [STG[onlySrc].table].filter(t => t !== 'raw_jobinrwanda_jobs' && t !== 'jobs_jobwebrwanda') : ['raw_brightermonday_jobs','raw_ndangira_jobs','jobs_greatrwandajobs']);
+  const label = 'Reset retry cap (' + (kind === 'jobs' ? 'jobs' : 'staging') + (onlySrc ? ', ' + onlySrc : '') + ')';
+  if(S.mode !== 'live') return demo(label);
+  if(!tables.length){ toast('This source has no retryable staging table'); return; }
+  let total = 0; const counts = {};
+  try { for(const t of tables){ counts[t] = await countOf(t + '?' + capFilter(t, onlySrc)); total += counts[t]; } } catch(e) { toast('Count failed: ' + e.message); return; }
+  if(!total){ toast('Nothing to reset: no capped rows with a transient error'); return; }
+  if(!await confirmDo(label, `Sets <code>extraction_attempts = 0</code> on <b>${nf(total)}</b> failed rows (${Object.entries(counts).map(([t,n]) => esc(t) + ': ' + n).join(', ')}) whose error looks transient. The retry crons then pick them up at a limited pace. Only do this once the keys are working, or they will hit the cap again.`, 'Reset ' + nf(total))) return;
+  await runOp(label, async () => { for(const t of tables) await rest(t + '?' + capFilter(t, onlySrc), {method:'PATCH', headers:{Prefer:'return=minimal'}, body:{extraction_attempts:0}}); return nf(total) + ' rows reset'; });
+}
+async function actSkipTenders(){
+  const label = 'Skip staged tenders';
+  if(S.mode !== 'live') return demo(label);
+  const f = 'content_type=in.(tender,paid_program)&extraction_status=in.(pending,failed)';
+  let n = 0; try { n = await countOf('raw_brightermonday_jobs?' + f); } catch(e) { toast('Count failed: ' + e.message); return; }
+  if(!n){ toast('No pending or failed tender rows'); return; }
+  if(!await confirmDo(label, `Sets <code>extraction_status = 'skipped_tender'</code> on <b>${nf(n)}</b> BrighterMonday staging rows already classified as tender / paid_program, so they stop consuming AI calls. Rows are kept, not deleted.`, 'Skip ' + nf(n))) return;
+  await runOp(label, async () => { await rest('raw_brightermonday_jobs?' + f, {method:'PATCH', headers:{Prefer:'return=minimal'}, body:{extraction_status:'skipped_tender'}}); return nf(n) + ' rows skipped'; });
+}
+async function actRequeueRow(row){
+  const label = 'Requeue ' + trunc(row.title, 30);
+  if(S.mode !== 'live' || !row.id) return demo(label);
+  const body = row.table === 'jobs' ? {extraction_status:'pending', extraction_error:null, extraction_attempts:0, processing_started_at:null} : {extraction_status:'pending', extraction_error:null, extraction_attempts:0};
+  await runOp(label, async () => { await rest(row.table + '?' + row.idCol + '=eq.' + encodeURIComponent(row.id), {method:'PATCH', headers:{Prefer:'return=minimal'}, body}); return row.table === 'jobs' ? 'requeued — retry-failed-jobs-drip picks it up within ~2 min' : 'requeued — the extractor drip picks it up within ~3 min'; });
+  closeDrawer();
+}
+async function actToggleActive(row){
+  const label = (row.active ? 'Deactivate ' : 'Activate ') + trunc(row.title, 30);
+  if(S.mode !== 'live' || !row.id) return demo(label);
+  await runOp(label, async () => { await rest('jobs?id=eq.' + row.id, {method:'PATCH', headers:{Prefer:'return=minimal'}, body:{is_active:!row.active}}); return (row.active ? 'now inactive' : 'now live (duplicates are forced back to inactive by the DB)'); });
+  closeDrawer();
+}
+
+// ---------------- Keys / cron / vocab / scrape ----------------
+async function actKey(id, act){
+  const k = D.keys.find(x => x.id === id); if(!k) return;
+  const label = 'Key #' + id + ': ' + act;
+  if(S.mode !== 'live') return demo(label);
+  const on = k.active && k.status === 'active';
+  const body = act === 'toggle' ? (on ? {active:false, status:'inactive'} : {active:true, status:'active', fail_count:0}) : act === 'unblock' ? {rpm_blocked_until:null, rpd_blocked_until:null} : {requests_today:0, day_window_start:new Date().toISOString()};
+  await runOp(label, async () => { await rest('gemini_keys?id=eq.' + id, {method:'PATCH', headers:{Prefer:'return=minimal'}, body}); return 'updated'; });
+}
+async function actAddKey(){
+  const key = $('newKeyValue').value.trim(), provider = $('newKeyProvider').value;
+  if(S.mode !== 'live') return demo('Add ' + provider + ' key');
+  if(key.length < 20){ toast('Paste the full key first'); return; }
+  await runOp('Add ' + provider + ' key', async () => { await rest('gemini_keys', {method:'POST', headers:{Prefer:'return=minimal'}, body:{api_key:key, provider, active:true, status:'active', fail_count:0, requests_today:0, rpm_limit:parseInt($('newKeyRpm').value) || 15, rpd_limit:parseInt($('newKeyRpd').value) || 200}}); $('newKeyValue').value = ''; return 'key stored (not displayed again)'; });
+}
+async function actCron(id, on){
+  const c = D.cron.find(x => x.id === id); const label = (on ? 'Resume ' : 'Pause ') + (c ? c.name : id);
+  if(S.mode !== 'live' || !D.cronLive){ if(S.mode === 'live') toast('Needs the helper functions in kazio-admin-helpers.sql'); else demo(label); return; }
+  if(!await confirmDo(label, on ? 'Re-enables this scheduled job.' : 'Stops this scheduled job until you resume it. Rows already queued are not affected.', on ? 'Resume' : 'Pause')) return;
+  await runOp(label, async () => { await rest('rpc/admin_set_cron_active', {method:'POST', body:{p_jobid:id, p_active:on}}); return on ? 'resumed' : 'paused'; });
+}
+async function actVocab(skill){
+  if(S.mode !== 'live') return demo('Approve ' + skill);
+  await runOp('Approve “' + skill + '”', async () => { await rest('skill_vocabulary?skill=eq.' + encodeURIComponent(skill), {method:'PATCH', headers:{Prefer:'return=minimal'}, body:{is_approved:true}}); return 'approved'; });
+}
+async function actScrape(ids){
+  const label = 'Scrape ' + (ids.length === SRC.length ? 'all sources' : ids.join(', '));
+  const withHook = ids.filter(id => S.hooks[id]);
+  if(S.mode !== 'live'){ ids.forEach(id => logLine('info', '[demo] would POST scraper trigger for ' + id)); toast('Demo mode — scrapers are triggered through webhooks you set in Settings'); return; }
+  if(!withHook.length){ toast('No scraper trigger URL set — add one per source in Settings'); $('settingsOverlay').classList.add('open'); return; }
+  await runOp(label, async () => {
+    for(const id of withHook){
+      try { await fetch(S.hooks[id], {method:'POST', mode:'no-cors', body:JSON.stringify({source:id, triggered_by:'kazio-admin', at:new Date().toISOString()})}); logLine('ok', id + ': trigger sent (response is opaque from the browser)'); }
+      catch(e) { logLine('err', id + ': trigger failed — ' + e.message); }
+    }
+    return withHook.length + ' trigger' + (withHook.length > 1 ? 's' : '') + ' sent' + (withHook.length < ids.length ? ', ' + (ids.length - withHook.length) + ' without a URL' : '');
+  });
+}
+
+// ---------------- Navigation ----------------
+const PAGE_META = {overview:['Overview',''], sources:['Sources','5 sources'], jobs:['Jobs explorer',''], queue:['Extraction queue',''], keys:['AI keys & capacity',''], automation:['Automation',''], quality:['Data quality',''], alerts:['Alerts',''], stats:['Stats & health','']};
+function goPage(id){
+  S.page = id;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + id));
+  $('crumbPage').textContent = PAGE_META[id][0];
+  const sub = $('crumbSub'); if(PAGE_META[id][1]){ sub.textContent = '· ' + PAGE_META[id][1]; sub.style.display = 'inline'; } else sub.style.display = 'none';
+  if(id === 'jobs') refreshTable('jobs');
+  if(id === 'sources') refreshTable('src-' + activeTab());
+  if(id === 'quality') loadVocabList();
+  window.scrollTo(0, 0);
+}
+const activeTab = () => (document.querySelector('#sourceTabs .tab.active') || {dataset:{tab:SRC[0].id}}).dataset.tab;
+function selectTab(id){
+  document.querySelectorAll('#sourceTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+  document.querySelectorAll('.source-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+  refreshTable('src-' + id);
+}
+function issueAction(a){
+  if(['keys','queue','sources','quality','automation','alerts'].includes(a)) return goPage(a);
+  if(a.startsWith('jobs:')){ const f = a.split(':')[1], sp = S.tblSpec.jobs; sp.flag = f; sp.status = 'all'; sp.source = 'all'; sp.q = ''; sp.page = 0; $('jobsFlag').value = f; $('jobsStatus').value = 'all'; $('jobsSource').value = 'all'; $('jobsSearch').value = ''; return goPage('jobs'); }
+  if(a.startsWith('src:')){ goPage('sources'); return selectTab(a.split(':')[1]); }
+  if(a === 'skipTenders') return actSkipTenders();
+  if(a === 'resetCap') return actResetCap('jobs');
+  if(a === 'resetCapStg') return actResetCap('staging');
+}
+function renderAll(){
+  renderChrome(); renderOverview(); SRC.forEach(s => renderSourceHead(s.id)); renderJobsBanner();
+  renderQueue(); renderKeys(); renderAutomation(); renderQuality(); renderAlerts(); renderStats();
+  if(S.page === 'jobs') refreshTable('jobs'); if(S.page === 'sources') refreshTable('src-' + activeTab());
+  if(D.live) loadVocabList();
+}
+
+// ---------------- Settings ----------------
+function loadPrefs(){ try { const u = localStorage.getItem('kazio_admin_url'); if(u) S.url = u; S.hooks = JSON.parse(localStorage.getItem('kazio_admin_hooks') || '{}'); } catch(e) { /* storage unavailable */ } }
+function savePrefs(){ try { localStorage.setItem('kazio_admin_url', S.url); localStorage.setItem('kazio_admin_hooks', JSON.stringify(S.hooks)); } catch(e) { /* ignore */ } }
+function openSettings(){
+  $('cfgUrl').value = S.url; $('cfgKey').value = '';
+  $('hookRows').innerHTML = SRC.map(s => `<div class="hook-row"><span>${esc(s.name)}</span><input class="field-input plain" type="text" data-hook="${s.id}" placeholder="https://…/webhook/…" value="${esc(S.hooks[s.id] || '')}"></div>`).join('');
+  $('settingsOverlay').classList.add('open');
+}
+async function saveSettings(){
+  const url = $('cfgUrl').value.trim().replace(/\/$/, ''), key = $('cfgKey').value.trim();
+  document.querySelectorAll('[data-hook]').forEach(i => { const v = i.value.trim(); if(v) S.hooks[i.dataset.hook] = v; else delete S.hooks[i.dataset.hook]; });
+  if(url) S.url = url; savePrefs();
+  if(!key){ $('settingsOverlay').classList.remove('open'); toast(S.mode === 'live' ? 'Saved' : 'Trigger URLs saved. Paste a service-role key to connect.'); renderAll(); return; }
+  const prev = {mode:S.mode, key:S.key};
+  S.mode = 'live'; S.key = key;
+  try { await rest('jobs?select=id&limit=1'); const d = await loadLive(); D = d; $('settingsOverlay').classList.remove('open'); seedLog(); renderAll(); toast('Connected — live data loaded'); logLine('ok', 'connected to ' + S.url.replace(/^https?:\/\//, '')); }
+  catch(e) { S.mode = prev.mode; S.key = prev.key; toast('Could not connect: ' + e.message); }
+}
+function disconnect(){ S.mode = 'snapshot'; S.key = ''; D = clone(SNAP); D.live = false; $('settingsOverlay').classList.remove('open'); seedLog(); renderAll(); toast('Back to the snapshot'); }
+
+// ---------------- Event wiring ----------------
+function wire(){
+  document.addEventListener('click', e => {
+    const t = e.target, q = sel => t.closest(sel);
+    let el;
+    if((el = q('.nav-item'))) return goPage(el.dataset.page);
+    if((el = q('[data-issue]'))) return issueAction(el.dataset.issue);
+    if((el = q('[data-goto]'))){ goPage('sources'); return selectTab(el.dataset.goto); }
+    if((el = q('#sourceTabs .tab'))) return selectTab(el.dataset.tab);
+    if((el = q('[data-scrape]'))) return actScrape([el.dataset.scrape]);
+    if((el = q('[data-extract]'))) return actExtract(el.dataset.extract, 2);
+    if((el = q('[data-retryfail]'))){ const id = el.dataset.retryfail; if(S.mode === 'live') { actResetCap('jobs', id); } else demo('Requeue failed rows for ' + id); return; }
+    if((el = q('th[data-sort]'))){ const sp = S.tblSpec[el.dataset.p], k = el.dataset.sort; sp.sort = {key:k, dir:(sp.sort && sp.sort.key === k) ? -sp.sort.dir : 1}; sp.page = 0; return refreshTable(sp.prefix); }
+    if((el = q('[data-pg]'))){ const sp = S.tblSpec[el.dataset.p]; sp.page = Math.max(0, sp.page + (+el.dataset.pg)); return refreshTable(sp.prefix); }
+    if((el = q('tr[data-row]'))){ const sp = S.tblSpec[el.dataset.p], row = sp && sp.rows[+el.dataset.row]; if(row) openDrawer(row); return; }
+    if((el = q('.seg button[data-scope]'))){ const id = el.parentElement.dataset.seg, sp = S.tblSpec['src-' + id]; el.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === el)); sp.scope = el.dataset.scope; sp.page = 0; sp.status = 'all'; document.querySelector(`[data-stsrc="${id}"]`).value = 'all'; return refreshTable(sp.prefix); }
+    if((el = q('[data-kact]'))) return actKey(+el.dataset.key, el.dataset.kact);
+    if((el = q('.toggle[data-cron]'))) return actCron(+el.dataset.cron, el.dataset.on !== '1');
+    if((el = q('[data-runfn]'))){ const fn = el.dataset.runfn, def = DBFN.find(f => f.fn === fn), args = {}; if(def) def.args.forEach(a => { const i = document.querySelector(`[data-fnarg="${fn}:${a}"]`); args[a] = i ? parseInt(i.value) || def.argDefaults[a] : def.argDefaults[a]; }); return actRpc(fn, args, def ? def.label : fn); }
+    if(q('[data-runext]')) return actExtract('', 2);
+    if((el = q('[data-vocab]'))) return actVocab(el.dataset.vocab);
+    if(q('#attnToggle')){ attnExpanded = !attnExpanded; return renderAttention(); }
+    if(q('#bannerConnect') || q('#connPill') || q('#openSettings')) return openSettings();
+    if(q('#bellBtn')) return goPage('alerts');
+    if(q('#qxRun')) return actExtract($('qxSource').value, $('qxLimit').value);
+    if(q('#qrRun')) return actRpc('retry_failed_jobs', {p_max_attempts:3, p_limit:Math.max(1, Math.min(15, parseInt($('qrLimit').value) || 5))}, 'Retry failed jobs');
+    if(q('#addKeyBtn')) return actAddKey();
+    if(q('#scrapeAllBtn') || q('#scrapeAllBtn2')) return actScrape(SRC.map(s => s.id));
+    if(q('#extractAllBtn')) return actExtract('', 2);
+    if(q('#refreshBtn') || q('#refreshBtn2') || q('#refreshBtn3') || q('#refreshBtn4') || q('#refreshBtn5')) return refreshLive();
+    if(q('#drawerClose') || t.id === 'drawerOverlay') return closeDrawer();
+    if(q('#dfRequeue')) return actRequeueRow(S.drawerRow);
+    if(q('#dfToggle')) return actToggleActive(S.drawerRow);
+    if(q('#dfCopy')){ try { navigator.clipboard.writeText(String(S.drawerRow.id)); toast('ID copied'); } catch(err) { toast(String(S.drawerRow.id)); } return; }
+    if(q('#closeSettings') || t.id === 'settingsOverlay') return $('settingsOverlay').classList.remove('open');
+    if(q('#saveSettings')) return saveSettings();
+    if(q('#disconnectBtn')) return disconnect();
+  });
+  let deb; const debounce = fn => { clearTimeout(deb); deb = setTimeout(fn, 250); };
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if(t.dataset && t.dataset.qsrc){ const sp = S.tblSpec['src-' + t.dataset.qsrc]; debounce(() => { sp.q = t.value; sp.page = 0; refreshTable(sp.prefix); }); }
+    if(t.id === 'jobsSearch') debounce(() => { const sp = S.tblSpec.jobs; sp.q = t.value; sp.page = 0; refreshTable('jobs'); });
+  });
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if(t.dataset && t.dataset.stsrc){ const sp = S.tblSpec['src-' + t.dataset.stsrc]; sp.status = t.value; sp.page = 0; refreshTable(sp.prefix); }
+    if(t.id === 'jobsSource' || t.id === 'jobsStatus' || t.id === 'jobsFlag'){ const sp = S.tblSpec.jobs; sp.source = $('jobsSource').value; sp.status = $('jobsStatus').value; sp.flag = $('jobsFlag').value; sp.page = 0; refreshTable('jobs'); }
+  });
+  $('globalSearch').addEventListener('keydown', e => { if(e.key === 'Enter'){ const sp = S.tblSpec.jobs; sp.q = e.target.value; sp.page = 0; sp.flag = ''; sp.status = 'all'; sp.source = 'all'; $('jobsSearch').value = e.target.value; $('jobsFlag').value = ''; $('jobsStatus').value = 'all'; $('jobsSource').value = 'all'; goPage('jobs'); } });
+  document.addEventListener('keydown', e => {
+    if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); $('globalSearch').focus(); }
+    if(e.key === 'Escape'){ closeDrawer(); $('settingsOverlay').classList.remove('open'); if($('confirmOverlay').classList.contains('open')) $('confirmNo').click(); }
+  });
+}
+
+async function init(){
+  loadPrefs();
+  if(!S.key){
+    S.key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kanZhenlleWtyemtxbGlwd2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0OTAzMzAsImV4cCI6MjA4NzA2NjMzMH0.OXKzbKKc05qYmy9nCFNyA5JwJVXJYz8u8Y9eGHCSdxo';
+    S.mode = 'live';
+  }
+  D = clone(SNAP); D.live = false;
+  initSources(); wire(); renderAll(); seedLog(); setGauge('idle');
+  if(S.mode === 'live'){
+    await refreshLive(true);
+  }
+}
+document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>

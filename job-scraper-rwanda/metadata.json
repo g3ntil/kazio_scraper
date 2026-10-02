@@ -1,0 +1,6 @@
+{
+  "name": "Job Scraper Rwanda",
+  "description": "Manual scraper for jobinrwanda.com with AI-powered skill extraction and Supabase integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

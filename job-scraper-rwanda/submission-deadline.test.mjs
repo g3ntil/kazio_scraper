@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { submissionDeadline } from './src/lib/submission-deadline.mjs';
+assert.equal(submissionDeadline('RFP ISSUE DATE: September 28, 2026 PROPOSAL SUBMISSION DEADLINE: [October 13, 2026, 17:00 Kigali time]'), '2026-10-13');
+assert.equal(submissionDeadline('SUBMISSION DEADLINE AND ADDRESS The duly signed and stamped bids must be submitted no later than 30 September 2026 at 2:30 PM'), '2026-09-30');
+assert.equal(submissionDeadline('Submit by 12/10/2026'), '2026-10-12');
+assert.equal(submissionDeadline('Closing date: 12th October 2026'), '2026-10-12');
+assert.equal(submissionDeadline('Established in 2021. Posted September 28, 2026'), null);
+assert.equal(submissionDeadline('Manage demanding deadlines. Established September 28, 2026'), null);
+assert.equal(submissionDeadline('Submit by 31/02/2026'), null);
+console.log('7 submission deadline tests passed');

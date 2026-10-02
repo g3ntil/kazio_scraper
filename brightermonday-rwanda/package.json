@@ -1,0 +1,25 @@
+{
+  "name": "brightermonday-rwanda-scraper",
+  "version": "1.0.0",
+  "description": "Raw web scraper for BrighterMonday Rwanda jobs & tenders",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "scrape:dry": "tsx src/index.ts --dry-run --limit=5",
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "playwright": "^1.50.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
