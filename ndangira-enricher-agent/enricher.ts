@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ndjvazyeykrzkqlipwbs.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kanZhenlleWtyemtxbGlwd2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0OTAzMzAsImV4cCI6MjA4NzA2NjMzMH0.OXKzbKKc05qYmy9nCFNyA5JwJVXJYz8u8Y9eGHCSdxo';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_KEY) throw new Error('Configure server-only SUPABASE_SERVICE_ROLE_KEY before running this writer.');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 

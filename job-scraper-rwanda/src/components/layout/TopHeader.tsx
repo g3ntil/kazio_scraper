@@ -15,6 +15,7 @@ export const TopHeader: React.FC = () => {
 
   const pageTitles: Record<string, string> = {
     overview: 'System Overview & Monitor',
+    pipeline: 'Scrape & Sync Control',
     sources: 'Job Portals & Staging Hub',
     jobs: 'Jobs Explorer & Database',
     queue: 'AI Extraction Queue',
@@ -66,12 +67,12 @@ export const TopHeader: React.FC = () => {
 
         {/* Scrape All Trigger */}
         <button
-          onClick={() => triggerScrapeAll()}
+          onClick={() => setActivePage('pipeline')}
           disabled={isScraping}
           className="flex items-center gap-2 min-h-12 px-4 py-2 rounded-lg bg-[#442a22] hover:bg-[#2e1c17] text-[#fbf9f5] text-xs font-semibold shadow-xs hover:-translate-y-0.5 transition-all duration-120 cursor-pointer disabled:opacity-50"
         >
           <Play className={`w-3 h-3 ${isScraping ? 'animate-spin' : 'fill-current'}`} />
-          <span>{isScraping ? 'Scraping All...' : 'Run Scrape All'}</span>
+          <span>Scrape & sync</span>
         </button>
 
         {/* Notifications Bell */}

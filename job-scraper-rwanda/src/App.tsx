@@ -4,6 +4,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { JobDrawer } from './components/layout/JobDrawer';
 import { OverviewPage } from './pages/OverviewPage';
+import { PipelinePage } from './pages/PipelinePage';
 import { SourcesPage } from './pages/SourcesPage';
 import { JobsExplorerPage } from './pages/JobsExplorerPage';
 import { QueuePage } from './pages/QueuePage';
@@ -31,6 +32,7 @@ const DashboardContent: React.FC = () => {
         {/* Dynamic Page Container */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24">
           {activePage === 'overview' && <OverviewPage />}
+          {activePage === 'pipeline' && <PipelinePage />}
           {activePage === 'sources' && <SourcesPage />}
           {activePage === 'jobs' && <JobsExplorerPage />}
           {activePage === 'queue' && <QueuePage />}

@@ -1,5 +1,6 @@
 export type PageId = 
   | 'overview'
+  | 'pipeline'
   | 'sources'
   | 'jobs'
   | 'queue'

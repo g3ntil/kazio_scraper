@@ -606,9 +606,9 @@ export async function aggregateLive(): Promise<AggregateDashboardData> {
   if (rawStaging.jobwebrwanda.total > 0) {
     issues.push({
       id: 'jwr_no_pipeline',
-      severity: 'warning',
-      title: `JobWeb Rwanda has no pipeline: ${rawStaging.jobwebrwanda.total} rows staged`,
-      description: 'Staging table lacks extraction status column and is unlinked from AI extraction funnel.',
+      severity: 'info',
+      title: `JobWeb Rwanda excluded: ${rawStaging.jobwebrwanda.total} historical rows`,
+      description: 'Scraping and extraction are disabled for this source by request.',
       actionLabel: 'Inspect Source',
       targetPage: 'sources'
     });
@@ -619,7 +619,7 @@ export async function aggregateLive(): Promise<AggregateDashboardData> {
       id: 'jir_staging_pending',
       severity: 'warning',
       title: `${rawStaging.jobinrwanda.pending} Job in Rwanda rows sit in staging`,
-      description: 'raw_jobinrwanda_jobs contains staged records while direct crawler writes to jobs.',
+      description: 'These raw records are waiting for the scheduled AI extractor. Check provider capacity and row errors.',
       actionLabel: 'Open Source',
       targetPage: 'sources'
     });
@@ -1772,7 +1772,7 @@ export async function fetchActiveCompleteJobs(limit: number = 6): Promise<JobRow
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase
       .from('jobs')
-      .select('id, title, company, location, deadline, job_url, scraped_at, is_active, ai_summary, industry, job_function, experience_level_new, salary_min, salary_max, salary_currency')
+      .select('id, title, company, location, deadline, job_url, scraped_at, is_active, ai_summary, industry, job_function, experience_level_new, salary_min, salary_max')
       .eq('is_active', true)
       .not('ai_summary', 'is', null)
       .or(`deadline.gte.${today},deadline.is.null`)

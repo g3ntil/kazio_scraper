@@ -40,6 +40,7 @@ export const Sidebar: React.FC = () => {
 
   const navItems: NavItemDef[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'pipeline', label: 'Scrape & sync', icon: Server },
     { id: 'sources', label: 'Sources', icon: Globe, count: 5 },
     { id: 'jobs', label: 'Jobs Explorer', icon: Search, count: loading ? '...' : totalJobs },
     { 

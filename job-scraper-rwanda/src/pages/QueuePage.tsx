@@ -57,21 +57,22 @@ export const QueuePage: React.FC = () => {
   const sources = data?.sources;
 
   // Staging sums (excluding unpipelineable sources)
-  const stgPending = (sources?.brightermonday?.raw?.pending || 0) +
+  const stgPending = (sources?.jobinrwanda?.raw?.pending || 0) + (sources?.brightermonday?.raw?.pending || 0) +
                      (sources?.ndangira?.raw?.pending || 0) +
                      (sources?.greatrwandajobs?.raw?.pending || 0);
 
-  const stgFailed = (sources?.brightermonday?.raw?.failed || 0) +
+  const stgFailed = (sources?.jobinrwanda?.raw?.failed || 0) + (sources?.brightermonday?.raw?.failed || 0) +
                     (sources?.ndangira?.raw?.failed || 0) +
                     (sources?.greatrwandajobs?.raw?.failed || 0);
 
   const totalSkipped = (totals?.skipped || 0) +
+                       (sources?.jobinrwanda?.raw?.skipped || 0) +
                        (sources?.brightermonday?.raw?.skipped || 0) +
                        (sources?.ndangira?.raw?.skipped || 0) +
                        (sources?.greatrwandajobs?.raw?.skipped || 0);
 
   // Staged tenders estimate for BrighterMonday
-  const stagedTendersCount = sources?.brightermonday?.raw?.tender || 76;
+  const stagedTendersCount = sources?.brightermonday?.raw?.tender || 0;
 
   // Table breakdown rows
   const queueTableRows = [
@@ -128,24 +129,23 @@ export const QueuePage: React.FC = () => {
       type: 'Job in Rwanda Staging',
       pending: sources?.jobinrwanda?.raw?.pending || 0,
       processing: null,
-      failed: 0,
+      failed: sources?.jobinrwanda?.raw?.failed || 0,
       atCap: null,
-      done: 0,
-      skipped: 0,
-      drainedBy: 'nothing (direct-to-jobs insertion path)',
+      done: sources?.jobinrwanda?.raw?.done || 0,
+      skipped: sources?.jobinrwanda?.raw?.skipped || 0,
+      drainedBy: 'ai-job-extractor + scheduled staging retries',
       isStaging: true,
-      warn: true,
     },
     {
       name: 'jobs_jobwebrwanda',
       type: 'JobWeb Rwanda Staging',
-      pending: sources?.jobwebrwanda?.raw?.total || 0,
+      pending: 0,
       processing: null,
       failed: 0,
       atCap: null,
       done: 0,
       skipped: 0,
-      drainedBy: 'nothing (no extraction_status column in staging)',
+      drainedBy: 'Excluded by request; historical rows are not queued',
       isStaging: true,
       warn: true,
     },
@@ -218,9 +218,12 @@ export const QueuePage: React.FC = () => {
       });
 
       if (error) throw error;
+      if (res?.error || res?.stopped) throw new Error(res.error || res.stopped);
+      const failures = res?.results?.filter((row: any) => row.status === 'failed' || row.status === 'error');
+      if (failures?.length) throw new Error(failures.map((row: any) => row.error).join('; '));
       setFeedback({
         type: 'success',
-        message: `AI Extractor batch triggered successfully (${extractorSource ? extractorSource : 'all sources'}, limit: ${extractorLimit} rows).`,
+        message: `AI Extractor checked ${res?.processed ?? 0} rows (${extractorSource ? extractorSource : 'all sources'}). Review row statuses for inserted, duplicate, and skipped results.`,
       });
       await refreshAll();
     } catch (err: any) {
@@ -895,7 +898,8 @@ export const QueuePage: React.FC = () => {
                   onChange={(e) => setExtractorSource(e.target.value)}
                   className="flex-1 px-2.5 py-1.5 bg-white border border-[#e6e2d6] rounded-lg text-xs text-[#442a22] font-medium outline-none focus:border-[#442a22]"
                 >
-                  <option value="">All 3 Active Sources</option>
+                  <option value="">All 4 Active Sources</option>
+                  <option value="jobinrwanda">Job in Rwanda</option>
                   <option value="brightermonday">BrighterMonday</option>
                   <option value="ndangira">Ndangira</option>
                   <option value="greatrwandajobs">Great Rwanda Jobs</option>

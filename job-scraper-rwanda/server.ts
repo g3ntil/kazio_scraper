@@ -1,12 +1,15 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from "url";
 import * as cheerio from "cheerio";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { classifyContent, extractTenderMetadata } from "./src/lib/bm_classifier.js";
 import xEngineRouter from "./server/x-engine.js";
+import { SOURCE_TABLES, createPipelineState, intervalFrom, hasDescription, insertNewRows, kickExtractor, discoverWithRetry } from './server/pipeline.js';
+import { localAdminBoundary, localDatabaseGateway } from "./server/local-admin.js";
 
 dotenv.config();
 
@@ -20,18 +23,22 @@ dotenv.config({ path: path.resolve(__dirname, '../../app/.env.local'), override:
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
   ? createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
+// The dashboard server is an admin writer. Never fall back to public write access.
+const supabase = supabaseAdmin;
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use('/api', localAdminBoundary(PORT));
   app.use(express.json({ limit: "50mb" }));
+  app.use('/api/scrape/jobwebrwanda', (_req, res) => { res.status(403).json({ error: 'JobWeb Rwanda scraping is disabled.' }); });
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.post('/api/admin/database', localDatabaseGateway(supabaseUrl, supabaseServiceKey));
   app.use('/api/x-engine', xEngineRouter);
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err instanceof SyntaxError && 'status' in err && err.status === 400) {
@@ -99,6 +106,74 @@ async function startServer() {
     greatrwandajobs: [],
     jobwebrwanda: []
   };
+
+  const pipeline = createPipelineState();
+  delete pipeline.sources.jobwebrwanda;
+  const checkpointPath = path.join(__dirname, 'output/pipeline-session.json');
+  try {
+    const saved = JSON.parse(readFileSync(checkpointPath, 'utf8'));
+    Object.assign(localScrapedStore, saved.local || {});
+    Object.assign(pipeline, saved.pipeline || {});
+    pipeline.running = false;
+    pipeline.syncing = false;
+    delete pipeline.sources.jobwebrwanda;
+    for (const source of Object.values(pipeline.sources)) {
+      if (['waiting', 'listing', 'details'].includes(source.stage)) {
+        source.stage = 'partial'; source.error = 'Server restarted during scraping. Run again to finish.';
+      }
+      if (source.sync === 'syncing') source.sync = 'partial';
+      if (source.extraction === 'starting') source.extraction = 'requested';
+    }
+  } catch (error: any) {
+    if (error.code !== 'ENOENT') broadcastLog('WARN', 'Could not restore the previous scraping session.');
+  }
+  const savePipeline = () => {
+    try {
+      mkdirSync(path.dirname(checkpointPath), { recursive: true });
+      writeFileSync(checkpointPath + '.tmp', JSON.stringify({ pipeline, local: localScrapedStore }));
+      renameSync(checkpointPath + '.tmp', checkpointPath);
+    } catch { pipeline.error = 'Could not save this session locally. Keep the server running until jobs are synced.'; }
+  };
+  let syncAllRunning = false;
+  const syncLocks = new Set<string>();
+  app.get('/api/pipeline', (_req, res) => {
+    res.json({ ...pipeline, syncing: syncAllRunning || syncLocks.size > 0,
+      cached: Object.fromEntries(Object.entries(localScrapedStore).map(([key, rows]) => [key, rows.length])) });
+  });
+  app.get('/api/pipeline/jobs', async (_req, res) => {
+    if (!supabase) return res.status(503).json({ error: 'Supabase is not configured.' });
+    try {
+      const jobs: any[] = [];
+      for (const source of Object.keys(pipeline.sources)) {
+        const config = SOURCE_TABLES[source];
+        const tracked = pipeline.addedJobs.filter(job => job.source === source);
+        for (let i = 0; i < tracked.length; i += 100) {
+          const chunk = tracked.slice(i, i + 100);
+          const { data, error } = await supabase.from(config.table)
+            .select(`${config.key},extraction_status,extraction_error,promoted_job_id`)
+            .in(config.key, chunk.map(job => job.key));
+          if (error) throw error;
+          jobs.push(...chunk.map(job => ({ ...job, ...((data || []) as any[]).find((row: any) => row[config.key] === job.key) })));
+        }
+      }
+      res.json(jobs);
+    } catch (error: any) { res.status(502).json({ error: error.message }); }
+  });
+  app.post('/api/pipeline/sync', async (_req, res) => {
+    if (pipeline.running || syncAllRunning || syncLocks.size) return res.status(409).json({ error: 'A scrape or sync is already running.' });
+    syncAllRunning = true;
+    res.status(202).json({ status: 'started' });
+    try {
+      for (const source of Object.keys(pipeline.sources)) {
+        if (!localScrapedStore[source]?.length) continue;
+        const response = await fetch(`http://127.0.0.1:${PORT}/api/scrape/sync-to-staging`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source }),
+        });
+        if (!response.ok) broadcastLog('ERROR', `Sync failed for ${source}: ${(await response.json()).error}`, source);
+      }
+    } catch (error: any) { pipeline.error = error.message; }
+    finally { syncAllRunning = false; }
+  });
 
   // Helper to pick values using regex
   const pick = (re: RegExp, str: string) => {
@@ -1094,16 +1169,19 @@ async function startServer() {
     const jobsList: any[] = [];
     const seenIds = new Set<string>();
 
-    $('a').each((_, el) => {
+    const currentJobLinks = $('.job-header a.title');
+    (currentJobLinks.length ? currentJobLinks : $('a')).each((_, el) => {
       const href = $(el).attr('href') || '';
       const rawTitle = $(el).text().trim();
       const match = href.match(/-(\d+)\/?$/);
-      if (match && match[1] && !seenIds.has(match[1]) && rawTitle.length > 5) {
-        seenIds.add(match[1]);
+      // Current slugs end in the deadline year, not a unique numeric post ID.
+      const externalId = currentJobLinks.length ? href.split('/').filter(Boolean).pop() : match?.[1];
+      if (externalId && !seenIds.has(externalId) && rawTitle.length > 5) {
+        seenIds.add(externalId);
         const fullUrl = href.startsWith('http') ? href : `https://ndangira.com/${href.replace(/^\//, '')}`;
         const cleanTitle = rawTitle.replace(/\s*:?\s*\([^)]*Deadline[^)]*\)/gi, '').trim();
         jobsList.push({
-          external_id: match[1],
+          external_id: externalId,
           job_url: fullUrl,
           title: cleanTitle,
           title_raw: rawTitle,
@@ -1141,10 +1219,10 @@ async function startServer() {
       let postedDateRaw: string | null = null;
       let viewsCount: number | null = null;
 
-      $('.info-box').each((_, el) => {
+      $('.info-box, .nd-info-item').each((_, el) => {
         const text = $(el).text().trim().replace(/\s+/g, ' ');
-        if (text.includes('Organization / Company')) {
-          const val = text.replace('Organization / Company', '').trim();
+        if (/Organization \/ Company|Company \/ Organization/.test(text)) {
+          const val = text.replace(/Organization \/ Company|Company \/ Organization/, '').trim();
           if (val) companyName = val;
         } else if (text.includes('Location')) {
           const val = text.replace('Location', '').trim();
@@ -1155,7 +1233,7 @@ async function startServer() {
         }
       });
 
-      const metaText = $('.ndangira-post-meta').text().trim() || $('body').text();
+      const metaText = $('.ndangira-post-meta, .nd-post-meta').text().trim() || $('body').text();
       const viewsMatch = metaText.match(/(\d+)\s+views/i);
       if (viewsMatch) viewsCount = parseInt(viewsMatch[1], 10);
 
@@ -1177,7 +1255,8 @@ async function startServer() {
         }
       });
 
-      const $content = $('.post-content, .listing-description').clone();
+      const legacyContent = $('.post-content, .listing-description');
+      const $content = (legacyContent.length ? legacyContent : $('article.nd-single-card .nd-content')).clone();
       $content.find('.post-share-box, .ndangira-important-notice, .ndangira-whatsapp-channel, .post-navigation, style, script, ins').remove();
 
       const descriptionHtml = $content.html() ? $content.html()!.trim() : null;
@@ -1311,23 +1390,28 @@ async function startServer() {
       const slice = validKeys.slice(i, i + chunkSize);
       try {
         if (source === 'jobinrwanda') {
-          const { data } = await supabase.from('raw_jobinrwanda_jobs').select('job_url').in('job_url', slice);
+          const { data, error } = await supabase.from('raw_jobinrwanda_jobs').select('job_url').in('job_url', slice);
+          if (error) throw error;
           data?.forEach((r: any) => r.job_url && existing.add(r.job_url));
         } else if (source === 'brightermonday') {
-          const { data } = await supabase.from('raw_brightermonday_jobs').select('external_id').in('external_id', slice);
+          const { data, error } = await supabase.from('raw_brightermonday_jobs').select('external_id').in('external_id', slice);
+          if (error) throw error;
           data?.forEach((r: any) => r.external_id && existing.add(r.external_id));
         } else if (source === 'ndangira') {
-          const { data } = await supabase.from('raw_ndangira_jobs').select('external_id').in('external_id', slice);
+          const { data, error } = await supabase.from('raw_ndangira_jobs').select('external_id').in('external_id', slice);
+          if (error) throw error;
           data?.forEach((r: any) => r.external_id && existing.add(r.external_id));
         } else if (source === 'greatrwandajobs') {
-          const { data } = await supabase.from('jobs_greatrwandajobs').select('job_url').in('job_url', slice);
+          const { data, error } = await supabase.from('jobs_greatrwandajobs').select('job_url').in('job_url', slice);
+          if (error) throw error;
           data?.forEach((r: any) => r.job_url && existing.add(r.job_url));
         } else if (source === 'jobwebrwanda') {
-          const { data } = await supabase.from('jobs_jobwebrwanda').select('job_url').in('job_url', slice);
+          const { data, error } = await supabase.from('jobs_jobwebrwanda').select('job_url').in('job_url', slice);
+          if (error) throw error;
           data?.forEach((r: any) => r.job_url && existing.add(r.job_url));
         }
       } catch (e) {
-        console.warn(`Error querying existing keys for ${source}:`, e);
+        throw e;
       }
     }
     return existing;
@@ -1380,17 +1464,25 @@ async function startServer() {
 
   app.post("/api/scrape/sync-to-staging", async (req, res) => {
     const { source, items } = req.body;
+    if (!pipeline.sources[source]) return res.status(400).json({ error: 'This source is disabled or unknown.' });
+    if (pipeline.running || syncLocks.has(source)) return res.status(409).json({ error: 'Wait for the active scrape or sync to finish.' });
     if (!source) return res.status(400).json({ error: "source is required" });
     if (!supabase) return res.status(500).json({ error: "Supabase client not configured" });
 
-    const itemsToSync = (items && Array.isArray(items) && items.length > 0) 
+    const candidateItems = (items && Array.isArray(items) && items.length > 0)
       ? items 
       : (localScrapedStore[source] || []);
 
+    const itemsToSync = candidateItems.filter(hasDescription);
+    const held = candidateItems.length - itemsToSync.length;
+    pipeline.sources[source].held = held;
     if (itemsToSync.length === 0) {
-      return res.status(400).json({ error: "No local items to sync for " + source });
+      pipeline.sources[source].sync = 'partial';
+      return res.status(400).json({ error: "No complete job descriptions to sync for " + source });
     }
 
+    syncLocks.add(source);
+    pipeline.sources[source].sync = 'syncing';
     try {
       broadcastLog('STAGING', `Analyzing ${itemsToSync.length} local items against ${source} staging table...`, source);
 
@@ -1514,29 +1606,50 @@ async function startServer() {
         }));
       }
 
-      // Upsert into Supabase in robust batches of 50
-      const batchSize = 50;
-      for (let i = 0; i < allRows.length; i += batchSize) {
-        const batch = allRows.slice(i, i + batchSize);
-        const { error } = await supabase.from(targetTable).upsert(batch, { onConflict: onConflictKey });
-        if (error) throw error;
-      }
-
-      broadcastLog('STAGING', `✓ Synced ${allRows.length} items to ${source} (${newlyAdded} newly added, ${alreadyExisting} updated)`, source);
-      localScrapedStore[source] = [];
+      const inserted: any[] = [];
+      await insertNewRows(supabase, targetTable, onConflictKey, allRows, rows => {
+        inserted.push(...rows);
+        pipeline.addedJobs.push(...rows.map(row => ({ source, table: targetTable, key: row[onConflictKey],
+          title: row.title_clean || row.title || row.title_raw, url: row.source_url || row.job_url,
+          addedAt: new Date().toISOString(), extraction_status: row.extraction_status })));
+        pipeline.sources[source].added += rows.length;
+        savePipeline();
+      });
+      newlyAdded = inserted.length;
+      alreadyExisting = allRows.length - newlyAdded;
+      pipeline.sources[source].existing = alreadyExisting;
+      pipeline.sources[source].sync = held ? 'partial' : 'done';
+      localScrapedStore[source] = candidateItems.filter((item: any) => !hasDescription(item));
+      broadcastLog('STAGING', `Synced ${source}: ${newlyAdded} new, ${alreadyExisting} already saved, ${held} incomplete held locally.`, source);
+      pipeline.sources[source].extraction = 'starting';
+      pipeline.sources[source].extractionError = null;
+      void kickExtractor(supabase, source).then(result => {
+        pipeline.sources[source].extraction = result.status;
+        pipeline.sources[source].extractionError = result.error || null;
+        savePipeline();
+        broadcastLog('AI', `${source}: extraction ${result.status}. Scheduled batches continue in Supabase.`, source);
+      }).catch(error => {
+        pipeline.sources[source].extraction = 'failed';
+        pipeline.sources[source].extractionError = error.message;
+        savePipeline();
+        broadcastLog('ERROR', `${source}: extraction could not start: ${error.message}`, source);
+      });
 
       res.json({
         status: 'success',
         syncedCount: allRows.length,
         newlyAdded,
         alreadyExisting,
+        held,
         source
       });
     } catch (err: any) {
       console.error(`Sync error for ${source}:`, err);
       broadcastLog('ERROR', `Staging sync failed for ${source}: ${err.message}`, source);
+      pipeline.sources[source].sync = 'failed';
+      pipeline.sources[source].error = err.message;
       res.status(500).json({ error: err.message });
-    }
+    } finally { syncLocks.delete(source); savePipeline(); }
   });
 
   // ==========================================
@@ -2138,31 +2251,7 @@ async function startServer() {
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const hasUsefulDetailFields = (details: any) => {
-    if (!details || typeof details !== 'object') return false;
-    const placeholderValues = new Set([
-      'no detailed description available.',
-      'no description available',
-      'unknown',
-      'rwanda'
-    ]);
-    return [
-      details.description_text,
-      details.description_html,
-      details.description,
-      details.deadline_date,
-      details.deadline,
-      details.company_name,
-      details.company,
-      details.location_raw,
-      details.location,
-      details.apply_url
-    ].some(value => {
-      if (typeof value !== 'string') return value != null;
-      const normalized = value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-      return normalized.length > 0 && !placeholderValues.has(normalized);
-    });
-  };
+  const hasUsefulDetailFields = hasDescription;
 
   const mergeUsefulDetailFields = (item: any, details: any) => {
     for (const [key, value] of Object.entries(details || {})) {
@@ -2173,6 +2262,14 @@ async function startServer() {
   };
 
   app.post("/api/scrape/all", async (req, res) => {
+    if (pipeline.running || syncAllRunning || syncLocks.size) return res.status(409).json({ error: 'A scrape or sync is already running.' });
+    let intervalMs: number;
+    try { intervalMs = intervalFrom(req.body?.intervalMs); }
+    catch (error: any) { return res.status(400).json({ error: error.message }); }
+    const maxJobs = req.body?.maxJobs;
+    if (maxJobs !== undefined && (!Number.isInteger(maxJobs) || maxJobs < 1 || maxJobs > 100)) {
+      return res.status(400).json({ error: 'A test sample must contain 1–100 jobs per source.' });
+    }
     const startTime = Date.now();
     const baseUrl = `http://127.0.0.1:${PORT}`;
     const requestedSource = typeof req.body?.source === 'string' ? req.body.source : null;
@@ -2181,18 +2278,28 @@ async function startServer() {
       { source: 'brightermonday', name: 'BrighterMonday', url: `${baseUrl}/api/scrape/brightermonday/list` },
       { source: 'ndangira', name: 'Ndangira', url: `${baseUrl}/api/scrape/ndangira/list` },
       { source: 'greatrwandajobs', name: 'Great Rwanda Jobs', url: `${baseUrl}/api/scrape/greatrwandajobs/list` },
-      { source: 'jobwebrwanda', name: 'JobWeb Rwanda', url: `${baseUrl}/api/scrape/jobwebrwanda/list` },
+
     ];
     const tasks = requestedSource ? allTasks.filter(task => task.source === requestedSource) : allTasks;
     if (tasks.length === 0) {
       return res.status(400).json({ error: `Unknown scrape source: ${requestedSource}` });
     }
 
+    pipeline.running = true;
+    pipeline.startedAt = new Date().toISOString();
+    pipeline.finishedAt = null;
+    pipeline.intervalMs = intervalMs;
+    pipeline.error = null;
+    for (const task of tasks) Object.assign(pipeline.sources[task.source], {
+      stage: 'waiting', found: 0, completed: 0, enriched: 0, incomplete: 0, currentJob: '', error: null,
+      sync: 'idle', existing: 0, held: 0,
+    });
+    if (req.body?.background) res.status(202).json({ status: 'started' });
     broadcastLog(
       'SCRAPE',
       requestedSource
         ? `Starting precision scrape for ${tasks[0].name}...`
-        : 'Starting multi-portal scrape across 5 Rwandan sources...',
+        : 'Starting multi-portal scrape across 4 Rwandan sources...',
       requestedSource || 'system'
     );
 
@@ -2202,15 +2309,20 @@ async function startServer() {
     // Crawl sources sequentially with live step broadcasting so the run monitor & terminal show genuine continuous progress
     for (const t of tasks) {
       const tStart = Date.now();
+      const progress = pipeline.sources[t.source];
+      progress.stage = 'listing';
       broadcastLog('SCRAPE', `[1/2] Connecting to ${t.name} and crawling feed...`, t.source);
 
       try {
-        const response = await fetch(t.url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        const data: any = await response.json();
-        const items: any[] = data.jobs || data.results || (Array.isArray(data) ? data : []);
+        const data: any = await discoverWithRetry(t.url, (attempt, error) => {
+          broadcastLog('WARN', `${t.name}: listing attempt ${attempt}/3 failed (${error}); retrying automatically.`, t.source);
+        });
+        const discovered: any[] = data.jobs || data.results || (Array.isArray(data) ? data : []);
+        const items = maxJobs ? discovered.slice(0, maxJobs) : discovered;
 
-        const detailConfig = DETAIL_ENRICHMENT_CONFIG[t.source];
+        const detailConfig = { ...DETAIL_ENRICHMENT_CONFIG[t.source], intervalMs };
+        progress.found = items.length;
+        progress.stage = 'details';
         const detailLimit = detailConfig.enrichAll ? items.length : Math.min(items.length, 3);
         broadcastLog(
           'SCRAPE',
@@ -2227,6 +2339,7 @@ async function startServer() {
         let incompleteCount = 0;
         for (let i = 0; i < detailLimit; i++) {
           const item = items[i];
+          progress.currentJob = item?.title || item?.job_url || '';
           if (item && item.job_url) {
             let detailEndpoint = '';
             const detailBody: any = { job_url: item.job_url };
@@ -2252,7 +2365,8 @@ async function startServer() {
                 const detRes = await fetch(detailEndpoint, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(detailBody)
+                  body: JSON.stringify(detailBody),
+                  signal: AbortSignal.timeout(60000)
                 });
                 if (!detRes.ok) throw new Error(`HTTP ${detRes.status}`);
 
@@ -2291,10 +2405,19 @@ async function startServer() {
               broadcastLog('SCRAPE', `  ${t.name}: ${enrichedCount}/${detailLimit} detail pages enriched`, t.source);
             }
 
+            progress.completed = i + 1;
+            progress.enriched = enrichedCount;
+            progress.incomplete = incompleteCount;
             if (i < detailLimit - 1) await sleep(detailConfig.intervalMs);
+          } else {
+            incompleteCount++;
+            progress.completed = i + 1;
+            progress.incomplete = incompleteCount;
           }
         }
 
+        progress.stage = incompleteCount ? 'partial' : 'done';
+        progress.currentJob = '';
         // Store into in-memory local pre-sync store (Stage 1)
         localScrapedStore[t.source] = items;
         totalJobs += items.length;
@@ -2321,6 +2444,8 @@ async function startServer() {
           count: 0,
           error: err.message
         };
+        progress.stage = 'failed';
+        progress.error = err.message;
         broadcastLog('ERROR', `✗ ${t.name} scrape failed: ${err.message}`, t.source);
       }
     }
@@ -2345,7 +2470,10 @@ async function startServer() {
       }
     }
 
-    res.json({
+    pipeline.running = false;
+    pipeline.finishedAt = new Date().toISOString();
+    savePipeline();
+    if (!res.headersSent) res.json({
       status: 'completed',
       totalJobs,
       durationMs: totalDurationMs,
@@ -2356,7 +2484,7 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, host: '127.0.0.1', hmr: { host: '127.0.0.1' } },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -2368,7 +2496,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "127.0.0.1", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

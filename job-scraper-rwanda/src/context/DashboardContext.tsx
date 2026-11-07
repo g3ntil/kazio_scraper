@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { AggregateDashboardData, PageId, SourceId, ActivityLogEntry, SyncResult, CompareResult } from '../types/dashboard';
 import { aggregateLive, fetchLocalScraped, syncLocalToStaging, compareLocalWithStaging } from '../services/dataService';
-import { scrapeAllSources, scrapeSource, ScrapeResult } from '../services/scraperService';
+import { scrapeSource, ScrapeResult } from '../services/scraperService';
 
 interface DashboardContextType {
   data: AggregateDashboardData | null;
@@ -157,36 +157,7 @@ export const DashboardProvider: React.FC<{ children: ReactNode }> = ({ children 
     setSelectedJobId(null);
   };
 
-  const triggerScrapeAll = async () => {
-    setIsScraping(true);
-    setScrapeProgress(10);
-    setActiveScrapeSource('system');
-    setScrapeStatus('Crawling portals and enriching job listings...');
-    addLog('SCRAPE', 'User triggered full scrape across all 5 portals', 'system');
-
-    // Smoothly animate progress steps
-    const progressInterval = setInterval(() => {
-      setScrapeProgress(prev => (prev < 90 ? prev + 8 : prev));
-    }, 2500);
-
-    try {
-      const res = await scrapeAllSources();
-      setScrapeResults(res);
-      setScrapeProgress(95);
-      setScrapeStatus('Scrape complete! Syncing local cache & refreshing metrics...');
-      await Promise.all([refreshAll(), refreshLocalStore()]);
-      setScrapeProgress(100);
-      setScrapeStatus('Idle · All portals cached locally');
-      addLog('INFO', 'Scrape completed successfully. Local buffer populated.', 'system');
-    } catch (err: any) {
-      setScrapeStatus(`Scrape failed: ${err.message}`);
-      addLog('ERROR', `Scrape execution failed: ${err.message}`, 'system');
-    } finally {
-      clearInterval(progressInterval);
-      setIsScraping(false);
-      setActiveScrapeSource(null);
-    }
-  };
+  const triggerScrapeAll = async () => { setActivePage('pipeline'); };
 
   const triggerSingleScrape = async (source: SourceId) => {
     setIsScraping(true);

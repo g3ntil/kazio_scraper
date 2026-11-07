@@ -1,15 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import type { RawNdangiraJob } from '../types.js';
 
 export function getSupabaseClient() {
+  dotenv.config({ path: fileURLToPath(new URL('../../../../app/.env.local', import.meta.url)), override: false });
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_KEY environment variables are required.');
+    throw new Error('Server-only SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured.');
   }
 
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 export async function upsertNdangiraJobs(records: RawNdangiraJob[]): Promise<{ count: number; error: any }> {

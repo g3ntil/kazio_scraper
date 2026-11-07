@@ -293,13 +293,13 @@ export const OverviewPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <StatusPulseBadge 
             status={isScraping ? 'running' : 'nominal'} 
-            label={isScraping ? (activeScrapeSource && activeScrapeSource !== 'system' ? `Scraping ${activeScrapeSource}` : 'Crawling 5 Portals') : 'Pipelines Nominal'} 
+            label={isScraping ? (activeScrapeSource && activeScrapeSource !== 'system' ? `Scraping ${activeScrapeSource}` : 'Crawling 4 Portals') : 'Scraper Idle'}
           />
           <div className="text-xs text-[#725a39]">
             {isScraping ? (
               <span className="font-mono text-[#293417] font-semibold animate-pulse">{scrapeStatus || 'Scraping job listings...'}</span>
             ) : (
-              <span>All 5 Rwandan job sources synchronized with central schema</span>
+              <span>4 sources enabled. Open Scrape &amp; sync for actual run and extraction results.</span>
             )}
           </div>
         </div>

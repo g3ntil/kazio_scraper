@@ -673,7 +673,7 @@ export const DataQualityPage: React.FC = () => {
               </div>
               <div>
                 <div className="font-sans font-bold text-sm text-[#442a22]">
-                  {enrichedCount.toLocaleString()} of {activeCount.toLocaleString()} live jobs ({enrichedPct}%) are fully enriched &amp; matchable
+                  {enrichedCount.toLocaleString()} of {activeCount.toLocaleString()} live jobs ({enrichedPct}%) have completed extraction. Field presence does not verify accuracy.
                 </div>
                 <div className="text-xs text-[#725a39] mt-0.5">
                   All metrics below are computed in real time across active, unexpired listings (<code className="font-mono bg-white/50 px-1 py-0.2 rounded text-[11px]">is_active = true</code>).
